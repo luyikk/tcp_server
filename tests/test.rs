@@ -1,7 +1,7 @@
 #![feature(async_closure)]
 use tokio::io::AsyncReadExt;
-use tcp_server::Builder;
 use xbinary::XBWrite;
+use tcpserver::Builder;
 
 #[tokio::test]
 async fn echo() {
@@ -19,6 +19,7 @@ async fn echo() {
                 peer.send_mut(writer).await.unwrap();
             }
 
+            println!("{:?} disconnect",peer.addr);
         }).build().await;
 
     tcpserver.start().await.unwrap();

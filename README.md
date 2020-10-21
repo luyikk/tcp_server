@@ -22,7 +22,7 @@ async fn main() {
                 writer.write(&buff[..len]);
                 peer.send_mut(writer).await.unwrap();
             }
-
+            println!("{:?} disconnect",peer.addr);
         }).build().await;
 
     tcpserver.start().await.unwrap();
