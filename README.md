@@ -3,8 +3,9 @@
 # Examples Echo
 ``` rust
 #![feature(async_closure)]
+use tcpserver::tokio;
 use tokio::io::AsyncReadExt;
-use xbinary::XBWrite;
+use tcpserver::XBWrite;
 use tcpserver::Builder;
 
 #[tokio::main]
@@ -14,18 +15,20 @@ async fn main() {
             println!("{:?} connect", addr);
             true
         }).set_input_event(async move |mut peer| {
-            let mut buff = [0; 4096];
+        let mut buff = [0; 4096];
 
-            while let Ok(len) = peer.reader.read(&mut buff).await {
-                println!("{:?}",&buff[..len]);
-                let mut writer = XBWrite::new();
-                writer.write(&buff[..len]);
-                peer.send_mut(writer).await.unwrap();
+        while let Ok(len) = peer.reader.read(&mut buff).await  {
+            if len==0{
+                break;
             }
-            println!("{:?} disconnect",peer.addr);
-        }).build().await;
+            println!("{:?}",&buff[..len]);
+            let mut writer = XBWrite::new();
+            writer.write(&buff[..len]);
+            peer.send_mut(writer).await.unwrap();
+        }
+        println!("{:?} disconnect",peer.addr);
+    }).build().await;
 
     tcpserver.start().await.unwrap();
 }
-
 ```
