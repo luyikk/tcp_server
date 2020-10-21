@@ -7,7 +7,7 @@ use tokio::io::AsyncReadExt;
 use xbinary::XBWrite;
 use tcpserver::Builder;
 
-#[tokio::test]
+#[tokio::main]
 async fn main() {
     let tcpserver = Builder::new("0.0.0.0:5555")
         .set_connect_event(|addr| {
