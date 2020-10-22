@@ -10,6 +10,7 @@ use tokio::net::{TcpListener, ToSocketAddrs};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use xbinary::XBWrite;
 use crate::peer::TCPPeer;
+use tokio::time::Duration;
 
 pub type ConnectEventType = fn(SocketAddr) -> bool;
 
@@ -51,6 +52,9 @@ impl<I, R> TCPServer<I, R>
         if let Some(mut listener) = self.listener.borrow_mut().take() {
             loop {
                 let (socket, addr) = listener.accept().await?;
+                if let Err(er)=socket.set_keepalive(Some(Duration::from_secs(5))){
+                    error!("set socket keepalive err:{}",er);
+                }
                 if let Some(connect_event) = *self.connect_event.borrow() {
                     if !connect_event(addr) {
                         warn!("addr:{} not connect", addr);
