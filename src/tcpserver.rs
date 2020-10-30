@@ -11,17 +11,15 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 use xbinary::XBWrite;
 use crate::peer::TCPPeer;
 use tokio::time::Duration;
+use std::marker::PhantomData;
 
 pub type ConnectEventType = fn(SocketAddr) -> bool;
 
-pub struct TCPServer<I, R>
-    where
-        I: Fn(TCPPeer) -> R + Send + Sync + 'static,
-        R: Future<Output = ()> + Send,
-{
+pub struct TCPServer<I, R> {
     listener: RefCell<Option<TcpListener>>,
     connect_event: RefCell<Option<ConnectEventType>>,
     input_event: Arc<I>,
+    phantom:PhantomData<R>
 }
 
 impl<I, R> TCPServer<I, R>
@@ -39,6 +37,7 @@ impl<I, R> TCPServer<I, R>
             listener: RefCell::new(Some(listener)),
             connect_event: RefCell::new(None),
             input_event: Arc::new(input),
+            phantom:PhantomData::default()
         })
     }
 
