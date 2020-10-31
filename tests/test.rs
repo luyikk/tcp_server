@@ -26,6 +26,8 @@ async fn echo_server() {
 
         println!("{:?} disconnect", peer.addr);
 
+        panic!("close");
+
     }).build().await;
 
     tcpserver.start().await.unwrap();
