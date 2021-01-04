@@ -38,7 +38,7 @@ impl TCPPeer {
        if let Some(ref mut sender)=self.sender{
            sender.write(buff).await
        }else {
-           Err(io::Error::new(ErrorKind::ConnectionAborted,"ConnectionAborted"))
+           Err(io::Error::new(ErrorKind::ConnectionReset,"ConnectionReset"))
        }
     }
 
@@ -49,7 +49,7 @@ impl TCPPeer {
             sender.shutdown().await
         }
         else{
-            Err(io::Error::new(ErrorKind::ConnectionAborted,"ConnectionAborted"))
+            Err(io::Error::new(ErrorKind::ConnectionReset,"ConnectionReset"))
         }
     }
 }
