@@ -1,20 +1,22 @@
 use crate::{TCPPeer, ConnectEventType, TCPServer};
 use std::future::Future;
 use tokio::net::ToSocketAddrs;
+use tokio::net::tcp::OwnedReadHalf;
+use std::sync::Arc;
+use aqueue::Actor;
+use std::marker::PhantomData;
 
 /// TCP server builder
-pub struct  Builder<I, R,T> where
-    I: Fn(TCPPeer) -> R + Send + Sync + 'static,
-    R: Future<Output = ()> + Send,
-    T: ToSocketAddrs{
+pub struct  Builder<I,R,T>{
     input:Option<I>,
     connect_event:Option<ConnectEventType>,
-    addr:T
+    addr:T,
+    _mask:PhantomData<R>
 }
 
 impl<I, R,T> Builder<I, R,T>
     where
-        I: Fn(TCPPeer) -> R + Send + Sync + 'static,
+        I: Fn(OwnedReadHalf,Arc<Actor<TCPPeer>>) -> R + Send + Sync + 'static,
         R: Future<Output = ()> + Send,
         T: ToSocketAddrs{
 
@@ -22,7 +24,8 @@ impl<I, R,T> Builder<I, R,T>
         Builder{
             input: None,
             connect_event: None,
-            addr
+            addr,
+            _mask:PhantomData::default()
         }
     }
 

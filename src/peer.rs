@@ -1,44 +1,77 @@
 use std::error::Error;
 use std::net::SocketAddr;
-use tokio::net::tcp::OwnedReadHalf;
-use tokio::sync::mpsc::Sender;
-use xbinary::XBWrite;
+use tokio::net::tcp::OwnedWriteHalf;
+
+use tokio::io::AsyncWriteExt;
+use std::io;
+use std::ops::Deref;
+use aqueue::Actor;
+use aqueue::AError::Other;
+use std::sync::Arc;
+
 
 pub struct TCPPeer {
     pub addr: SocketAddr,
-    pub reader: OwnedReadHalf,
-    pub sender: Sender<XBWrite>,
+    pub sender: OwnedWriteHalf,
 }
+
 
 impl TCPPeer {
     /// 创建一个TCP PEER
-    pub fn new(addr: SocketAddr, reader: OwnedReadHalf, sender: Sender<XBWrite>) -> TCPPeer {
-        TCPPeer {
+    #[inline]
+    pub fn new(addr: SocketAddr, sender: OwnedWriteHalf) -> Arc<Actor<TCPPeer>> {
+       Arc::new(Actor::new(TCPPeer {
             addr,
-            reader,
-            sender,
-        }
-    }
-
-    /// 获取发送句柄
-    pub fn get_sender(&self) -> Sender<XBWrite> {
-        self.sender.clone()
+            sender
+        }))
     }
 
     /// 发送
-    pub async fn send(&self, buff: XBWrite) -> Result<(), Box<dyn Error>> {
-        self.get_sender().send(buff).await?;
-        Ok(())
-    }
-
-    /// 发送 mut 版
-    pub async fn send_mut(&mut self, buff: XBWrite) -> Result<(), Box<dyn Error>> {
-        self.sender.send(buff).await?;
-        Ok(())
+    #[inline]
+    pub async fn send(&mut self, buff: &[u8]) -> io::Result<usize> {
+       self.sender.write(buff).await
     }
 
     /// 掐线
-    pub async fn disconnect(&mut self) -> Result<(), Box<dyn Error>> {
-        self.send(XBWrite::new()).await
+    #[inline]
+    pub async fn disconnect(&mut self) ->io::Result<()> {
+        self.sender.shutdown().await
+    }
+}
+
+#[aqueue::aqueue_trait]
+pub trait IPeer{
+    fn addr(&self)->SocketAddr;
+    async fn send<T:Deref<Target=[u8]>+Send+Sync+'static>(&self,buff:T)->Result<usize,Box<dyn Error>>;
+    async fn disconnect(&self)->Result<(),Box<dyn Error>>;
+}
+
+#[aqueue::aqueue_trait]
+impl IPeer for Actor<TCPPeer>{
+    fn addr(&self) -> SocketAddr {
+        unsafe {
+            self.deref_inner().addr
+        }
+    }
+
+    async fn send<T: Deref<Target=[u8]> + Send + Sync + 'static>(&self, buff: T) -> Result<usize, Box<dyn Error>> {
+       let size= self.inner_call(async move|inner|{
+           match inner.get_mut().send(&buff).await{
+               Ok(size)=>Ok(size),
+               Err(er)=>Err(Other(er.into()))
+           }
+
+        }).await?;
+        Ok(size)
+    }
+
+    async fn disconnect(&self) -> Result<(), Box<dyn Error>> {
+        self.inner_call(async move|inner|{
+            match inner.get_mut().disconnect().await {
+                Ok(_) => Ok(()),
+                Err(er) => Err(Other(er.into()))
+            }
+        }).await?;
+        Ok(())
     }
 }

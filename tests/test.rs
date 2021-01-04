@@ -1,36 +1,35 @@
 #![feature(async_closure)]
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use xbinary::XBWrite;
-use tcpserver::Builder;
+use tcpserver::{Builder, IPeer};
 use std::error::Error;
 
 
 #[tokio::test]
-async fn echo_server() {
+async fn echo_server()->Result<(),Box<dyn Error>> {
     let tcpserver = Builder::new("0.0.0.0:5555")
         .set_connect_event(|addr| {
             println!("{:?} connect", addr);
             true
-        }).set_input_event(async move |mut peer| {
+        }).set_input_event(async move |mut reader, peer| {
         let mut buff = [0; 4096];
 
-        while let Ok(len) = peer.reader.read(&mut buff).await {
+        while let Ok(len) = reader.read(&mut buff).await {
             if len == 0 {
                 break;
             }
             println!("{:?}", &buff[..len]);
-            let mut writer = XBWrite::new();
-            writer.write(&buff[..len]);
-            peer.send_mut(writer).await.unwrap();
+            peer.send(buff[..len].to_vec()).await.unwrap();
+
         }
 
-        println!("{:?} disconnect", peer.addr);
-
+        println!("{:?} disconnect", peer.addr());
         panic!("close");
 
     }).build().await;
 
-    tcpserver.start().await.unwrap();
+    tcpserver.start().await?;
+    Ok(())
+
 }
 
 

@@ -14,17 +14,14 @@ async fn main() {
         .set_connect_event(|addr| {
             println!("{:?} connect", addr);
             true
-        }).set_input_event(async move |mut peer| {
+        }).set_input_event(async move |mut reader, peer| {
         let mut buff = [0; 4096];
-
         while let Ok(len) = peer.reader.read(&mut buff).await  {
             if len==0{
                 break;
             }
             println!("{:?}",&buff[..len]);
-            let mut writer = XBWrite::new();
-            writer.write(&buff[..len]);
-            peer.send_mut(writer).await.unwrap();
+            peer.send(buff[..len].to_vec()).await.unwrap();
         }
         println!("{:?} disconnect",peer.addr);
     }).build().await;
