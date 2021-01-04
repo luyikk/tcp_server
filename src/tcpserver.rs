@@ -10,6 +10,7 @@ use crate::peer::TCPPeer;
 use std::marker::PhantomData;
 use tokio::net::tcp::OwnedReadHalf;
 use aqueue::Actor;
+use crate::IPeer;
 
 pub type ConnectEventType = fn(SocketAddr) -> bool;
 
@@ -60,7 +61,10 @@ impl<I, R> TCPServer<I, R>
                 let peer = TCPPeer::new(addr, sender);
                 let input = self.input_event.clone();
                 tokio::spawn(async move {
-                    (*input)(reader, peer).await;
+                    (*input)(reader, peer.clone()).await;
+                    if let Err(er)= peer.disconnect().await{
+                        error!("disconnect client:{:?} err:{}",peer.addr(),er);
+                    }
                 });
             }
         }

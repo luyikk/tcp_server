@@ -19,11 +19,8 @@ async fn echo_server()->Result<(),Box<dyn Error>> {
             }
             println!("{:?}", &buff[..len]);
             peer.send(buff[..len].to_vec()).await.unwrap();
-
         }
-
         println!("{:?} disconnect", peer.addr());
-        panic!("close");
 
     }).build().await;
 
