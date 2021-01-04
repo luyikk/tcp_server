@@ -62,8 +62,8 @@ impl<I, R> TCPServer<I, R>
                 let input = self.input_event.clone();
                 tokio::spawn(async move {
                     (*input)(reader, peer.clone()).await;
-                    if let Err(er)= peer.disconnect().await{
-                        error!("disconnect client:{:?} err:{}",peer.addr(),er);
+                    if let Err(er) = peer.disconnect().await {
+                        error!("disconnect client:{:?} err:{}", peer.addr(), er);
                     }
                 });
             }

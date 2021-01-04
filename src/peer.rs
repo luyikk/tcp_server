@@ -1,11 +1,10 @@
-use std::error::Error;
 use std::net::SocketAddr;
 use tokio::net::tcp::OwnedWriteHalf;
 
 use tokio::io::{AsyncWriteExt, ErrorKind};
 use std::io;
 use std::ops::Deref;
-use aqueue::Actor;
+use aqueue::{Actor, AResult};
 use aqueue::AError::Other;
 use std::sync::Arc;
 
@@ -49,7 +48,7 @@ impl TCPPeer {
             sender.shutdown().await
         }
         else{
-            Err(io::Error::new(ErrorKind::ConnectionReset,"ConnectionReset"))
+           Ok(())
         }
     }
 }
@@ -57,9 +56,9 @@ impl TCPPeer {
 #[aqueue::aqueue_trait]
 pub trait IPeer{
     fn addr(&self)->SocketAddr;
-    async fn is_disconnect(&self)-> Result<bool,Box<dyn Error>> ;
-    async fn send<T:Deref<Target=[u8]>+Send+Sync+'static>(&self,buff:T)->Result<usize,Box<dyn Error>>;
-    async fn disconnect(&self)->Result<(),Box<dyn Error>>;
+    async fn is_disconnect(&self)-> AResult<bool> ;
+    async fn send<T:Deref<Target=[u8]>+Send+Sync+'static>(&self,buff:T)->AResult<usize>;
+    async fn disconnect(&self)->AResult<()>;
 }
 
 #[aqueue::aqueue_trait]
@@ -72,32 +71,30 @@ impl IPeer for Actor<TCPPeer>{
     }
 
     #[inline]
-    async fn is_disconnect(&self) -> Result<bool,Box<dyn Error>> {
-        Ok(self.inner_call(async move |inner| {
+    async fn is_disconnect(&self) -> AResult<bool> {
+        self.inner_call(async move |inner| {
             Ok(inner.get().is_disconnect())
-        }).await?)
+        }).await
     }
 
     #[inline]
-    async fn send<T: Deref<Target=[u8]> + Send + Sync + 'static>(&self, buff: T) -> Result<usize, Box<dyn Error>> {
-       let size= self.inner_call(async move|inner|{
+    async fn send<T: Deref<Target=[u8]> + Send + Sync + 'static>(&self, buff: T) -> AResult<usize> {
+       self.inner_call(async move|inner|{
            match inner.get_mut().send(&buff).await{
                Ok(size)=>Ok(size),
                Err(er)=>Err(Other(er.into()))
            }
 
-        }).await?;
-        Ok(size)
+        }).await
     }
 
     #[inline]
-    async fn disconnect(&self) -> Result<(), Box<dyn Error>> {
+    async fn disconnect(&self) -> AResult<()> {
         self.inner_call(async move|inner|{
             match inner.get_mut().disconnect().await {
                 Ok(_) => Ok(()),
                 Err(er) => Err(Other(er.into()))
             }
-        }).await?;
-        Ok(())
+        }).await
     }
 }

@@ -12,7 +12,6 @@ async fn echo_server()->Result<(),Box<dyn Error>> {
             true
         }).set_input_event(async move |mut reader, peer| {
         let mut buff = [0; 4096];
-
         while let Ok(len) = reader.read(&mut buff).await {
             if len == 0 {
                 break;
