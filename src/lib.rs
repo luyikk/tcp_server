@@ -5,5 +5,5 @@ mod builder;
 
 pub use builder::Builder;
 pub use peer::*;
-pub use tcpserver::TCPServer;
-pub use tcpserver::ConnectEventType;
+pub use tcpserver::*;
+

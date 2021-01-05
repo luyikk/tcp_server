@@ -17,7 +17,7 @@ pub struct  Builder<I,R,T>{
 impl<I, R,T> Builder<I, R,T>
     where
         I: Fn(OwnedReadHalf,Arc<Actor<TCPPeer>>) -> R + Send + Sync + 'static,
-        R: Future<Output = ()> + Send,
+        R: Future<Output = ()> + Send+'static,
         T: ToSocketAddrs{
 
     pub fn new(addr:T)->Builder<I, R,T>{
@@ -42,13 +42,14 @@ impl<I, R,T> Builder<I, R,T>
     }
 
     /// 生成TCPSERVER,如果没有设置 tcp input 将报错
-    pub async fn build(mut self)->TCPServer<I,R>{
+    pub async fn build(mut self)->Arc<Actor<TCPServer<I,R>>>{
         if let Some(input)=self.input.take() {
-            let tcp= TCPServer::new(self.addr, input).await.unwrap();
             if let Some(connect)=self.connect_event.take() {
-                tcp.set_connection_event(connect);
+               return  TCPServer::new(self.addr, input,Some(connect)).await.unwrap();
             }
-            return tcp;
+            else{
+                return  TCPServer::new(self.addr, input,None).await.unwrap();
+            }
         }
         panic!("input event is no settings,please use set_input_event function set input event.");
     }

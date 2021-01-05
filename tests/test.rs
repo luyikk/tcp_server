@@ -1,12 +1,26 @@
 #![feature(async_closure)]
+
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tcpserver::{Builder, IPeer};
+use tcpserver::{Builder, IPeer, ITCPServer};
 use std::error::Error;
+use std::sync::Arc;
 
 
 #[tokio::test]
+
 async fn echo_server()->Result<(),Box<dyn Error>> {
-    let tcpserver = Builder::new("0.0.0.0:5555")
+
+    struct Foo{
+        serv:Arc<dyn ITCPServer>
+    }
+
+    impl Foo{
+        pub async fn start(&self)->Result<(),Box<dyn Error>> {
+            self.serv.start_block().await
+        }
+    }
+
+    let tcpserver:Arc<dyn ITCPServer>= Builder::new("0.0.0.0:5555")
         .set_connect_event(|addr| {
             println!("{:?} connect", addr);
             true
@@ -23,7 +37,11 @@ async fn echo_server()->Result<(),Box<dyn Error>> {
 
     }).build().await;
 
-    tcpserver.start().await?;
+    let foo_server=Foo{
+        serv:tcpserver
+    };
+
+    foo_server.start().await?;
     Ok(())
 
 }
