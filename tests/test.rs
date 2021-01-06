@@ -5,28 +5,51 @@ use tcpserver::{Builder, IPeer, ITCPServer};
 use std::error::Error;
 use std::sync::Arc;
 
-
 #[tokio::test]
-
-async fn echo_server()->Result<(),Box<dyn Error>> {
-
-    struct Foo{
-        serv:Arc<dyn ITCPServer>
-    }
-
-
-
-    impl Foo{
-        pub async fn start(&self)->Result<(),Box<dyn Error>> {
-            self.serv.start_block().await
-        }
-    }
-
-    let tcpserver:Arc<dyn ITCPServer>= Builder::new("0.0.0.0:5555")
+async fn test_builder()->Result<(),Box<dyn Error>>{
+    let tcpserver = Builder::new("0.0.0.0:8998")
         .set_connect_event(|addr| {
             println!("{:?} connect", addr);
             true
-        }).set_input_event(async move |mut reader, peer| {
+        }).set_input_event(async move |mut reader, peer,_| {
+        let mut buff = [0; 4096];
+        while let Ok(len) = reader.read(&mut buff).await  {
+            if len==0{
+                break;
+            }
+            println!("{:?}",&buff[..len]);
+            peer.send(buff[..len].to_vec()).await.unwrap();
+        }
+        println!("{:?} disconnect",peer.addr());
+    }).build().await;
+
+    tcpserver.start(()).await?;
+    Ok(())
+}
+
+
+#[tokio::test]
+async fn echo_server()->Result<(),Box<dyn Error>> {
+
+    struct Foo{
+        serv:Arc<dyn ITCPServer<()>>
+    }
+
+    unsafe impl Send for Foo{}
+    unsafe impl Sync for Foo{}
+
+    impl Foo{
+        pub async fn start(&self)->Result<(),Box<dyn Error>> {
+            self.serv.start_block(()).await
+        }
+    }
+
+    let tcpserver:Arc<dyn ITCPServer<()>>= Builder::new("0.0.0.0:5555")
+        .set_connect_event(|addr| {
+            println!("{:?} connect", addr);
+            true
+        }).set_input_event(async move |mut reader, peer,_| {
+
         let mut buff = [0; 4096];
         while let Ok(len) = reader.read(&mut buff).await {
             if len == 0 {
@@ -39,9 +62,9 @@ async fn echo_server()->Result<(),Box<dyn Error>> {
 
     }).build().await;
 
-    let foo_server=Foo{
+    let foo_server=Arc::new(Foo{
         serv:tcpserver
-    };
+    });
 
     foo_server.start().await?;
     Ok(())

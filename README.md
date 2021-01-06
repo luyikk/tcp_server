@@ -9,23 +9,24 @@ use tcpserver::XBWrite;
 use tcpserver::Builder;
 
 #[tokio::main]
-async fn main() {
-    let tcpserver = Builder::new("0.0.0.0:5555")
+async fn main()->Result<(),Box<dyn Error>> {
+    let tcpserver = Builder::new("0.0.0.0:8998")
         .set_connect_event(|addr| {
             println!("{:?} connect", addr);
             true
-        }).set_input_event(async move |mut reader, peer| {
+        }).set_input_event(async move |mut reader, peer,_| {
         let mut buff = [0; 4096];
-        while let Ok(len) = peer.reader.read(&mut buff).await  {
+        while let Ok(len) = reader.read(&mut buff).await  {
             if len==0{
                 break;
             }
             println!("{:?}",&buff[..len]);
             peer.send(buff[..len].to_vec()).await.unwrap();
         }
-        println!("{:?} disconnect",peer.addr);
+        println!("{:?} disconnect",peer.addr());
     }).build().await;
 
-    tcpserver.start().await.unwrap();
+    tcpserver.start(()).await?;
+    Ok(())
 }
 ```

@@ -7,25 +7,28 @@ use aqueue::Actor;
 use std::marker::PhantomData;
 
 /// TCP server builder
-pub struct  Builder<I,R,T>{
+pub struct  Builder<I,R,A,T>{
     input:Option<I>,
     connect_event:Option<ConnectEventType>,
-    addr:T,
-    _mask:PhantomData<R>
+    addr:A,
+    _phantom1:PhantomData<R>,
+    _phantom2:PhantomData<T>
 }
 
-impl<I, R,T> Builder<I, R,T>
+impl<I, R,A,T> Builder<I,R,A,T>
     where
-        I: Fn(OwnedReadHalf,Arc<Actor<TCPPeer>>) -> R + Send + Sync + 'static,
+        I: Fn(OwnedReadHalf,Arc<Actor<TCPPeer>>,T) -> R + Send + Sync + 'static,
         R: Future<Output = ()> + Send+'static,
-        T: ToSocketAddrs{
+        A: ToSocketAddrs,
+        T: Clone+Send+Sync+'static{
 
-    pub fn new(addr:T)->Builder<I, R,T>{
+    pub fn new(addr:A)->Builder<I, R,A,T>{
         Builder{
             input: None,
             connect_event: None,
             addr,
-            _mask:PhantomData::default()
+            _phantom1:PhantomData::default(),
+            _phantom2:PhantomData::default()
         }
     }
 
@@ -42,13 +45,12 @@ impl<I, R,T> Builder<I, R,T>
     }
 
     /// 生成TCPSERVER,如果没有设置 tcp input 将报错
-    pub async fn build(mut self)->Arc<Actor<TCPServer<I,R>>>{
+    pub async fn build(mut self)->Arc<Actor<TCPServer<I,R,T>>>{
         if let Some(input)=self.input.take() {
-            if let Some(connect)=self.connect_event.take() {
-               return  TCPServer::new(self.addr, input,Some(connect)).await.unwrap();
-            }
-            else{
-                return  TCPServer::new(self.addr, input,None).await.unwrap();
+            return if let Some(connect) = self.connect_event.take() {
+                TCPServer::new(self.addr, input, Some(connect)).await.unwrap()
+            } else {
+                TCPServer::new(self.addr, input, None).await.unwrap()
             }
         }
         panic!("input event is no settings,please use set_input_event function set input event.");
