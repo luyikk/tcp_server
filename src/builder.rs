@@ -20,7 +20,7 @@ impl<I, R,A,T> Builder<I,R,A,T>
         I: Fn(OwnedReadHalf,Arc<Actor<TCPPeer>>,T) -> R + Send + Sync + 'static,
         R: Future<Output = ()> + Send+'static,
         A: ToSocketAddrs,
-        T: Clone+Send+Sync+'static{
+        T: Clone+Send+'static{
 
     pub fn new(addr:A)->Builder<I, R,A,T>{
         Builder{

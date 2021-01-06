@@ -22,14 +22,14 @@ pub struct TCPServer<I, R,T> {
     __phantom:PhantomData<T>
 }
 
-unsafe impl <I,R,T:Clone+Send> Send for TCPServer<I, R,T>{}
-unsafe impl <I,R,T:Clone+Sync> Sync for TCPServer<I, R,T>{}
+unsafe impl <I,R,T> Send for TCPServer<I, R,T>{}
+unsafe impl <I,R,T> Sync for TCPServer<I, R,T>{}
 
 impl<I, R,T> TCPServer<I, R,T>
     where
         I: Fn(OwnedReadHalf,Arc<Actor<TCPPeer>>,T) -> R + Send + Sync + 'static,
         R: Future<Output = ()> + Send+'static,
-        T:Clone+Send+Sync+'static
+        T:Clone+Send+'static
 {
     /// 创建一个新的TCP服务
     pub(crate) async fn new<A: ToSocketAddrs>(
@@ -97,7 +97,7 @@ impl <I, R,T> ITCPServer<T>  for Actor<TCPServer<I, R,T>>
     where
         I: Fn(OwnedReadHalf,Arc<Actor<TCPPeer>>,T) -> R + Send + Sync + 'static,
         R: Future<Output = ()> + Send+'static,
-        T:Clone+Send+Sync+'static{
+        T: Clone+Send+Sync+'static{
 
    async fn start(&self,token:T)->AResult<JoinHandle<io::Result<()>>> {
         self.inner_call(async move |inner| {
