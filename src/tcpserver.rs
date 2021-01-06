@@ -67,6 +67,9 @@ impl<I, R> TCPServer<I, R>
                         if let Err(er) = peer.disconnect().await {
                             error!("disconnect client:{:?} err:{}", peer.addr(), er);
                         }
+                        else{
+                            debug!("{} disconnect", peer.addr())
+                        }
                     });
                 }
 
