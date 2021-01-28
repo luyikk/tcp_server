@@ -13,5 +13,5 @@ description = "rust tcp server frame."
 [dependencies]
 tokio = { version = "1", features = ["full"] }
 log="0.4"
-aqueue={path="../actor_queue"}
+aqueue="0.3.2"
 data-rw="0.2.4"
