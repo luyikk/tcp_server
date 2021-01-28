@@ -1,25 +1,21 @@
 use std::net::SocketAddr;
-use tokio::net::tcp::OwnedWriteHalf;
-
-use tokio::io::{AsyncWriteExt, ErrorKind};
-use std::io;
-use std::ops::Deref;
 use aqueue::{Actor, AResult};
 use aqueue::AError::Other;
-use std::sync::Arc;
-
+use std::sync::{Arc};
+use tokio::sync::mpsc::Sender;
+use std::error::Error;
 
 
 pub struct TCPPeer {
     pub addr: SocketAddr,
-    pub sender:Option<OwnedWriteHalf>,
+    pub sender:Option<Sender<Vec<u8>>>,
 }
 
 
 impl TCPPeer {
     /// 创建一个TCP PEER
     #[inline]
-    pub fn new(addr: SocketAddr, sender: OwnedWriteHalf) -> Arc<Actor<TCPPeer>> {
+    pub fn new(addr: SocketAddr, sender: Sender<Vec<u8>>) -> Arc<Actor<TCPPeer>> {
        Arc::new(Actor::new(TCPPeer {
             addr,
             sender:Some(sender)
@@ -33,21 +29,21 @@ impl TCPPeer {
 
     /// 发送
     #[inline]
-    pub async fn send(&mut self, buff: &[u8]) -> io::Result<usize> {
-       if let Some(ref mut sender)=self.sender{
-           let size=  sender.write(buff).await?;
-           sender.flush().await?;
-           Ok(size)
+    pub async fn send(&self, buff: Vec<u8>) ->Result<(),Box<dyn Error+ Send + Sync>> {
+       if let Some(sender)=self.sender.clone(){
+           sender.send(buff).await?;
+           Ok(())
        }else {
-           Err(io::Error::new(ErrorKind::ConnectionReset,"ConnectionReset"))
+           Err("ConnectionReset".into())
        }
     }
 
     /// 掐线
     #[inline]
-    pub async fn disconnect(&mut self) ->io::Result<()> {
-        if let Some(mut sender)=self.sender.take() {
-            sender.shutdown().await
+    pub async fn disconnect(&mut self) ->Result<(),Box<dyn Error+ Send + Sync>> {
+        if let Some(sender)=self.sender.take() {
+            sender.send(Vec::default()).await?;
+            Ok(())
         }
         else{
            Ok(())
@@ -59,7 +55,7 @@ impl TCPPeer {
 pub trait IPeer{
     fn addr(&self)->SocketAddr;
     async fn is_disconnect(&self)-> AResult<bool> ;
-    async fn send<T:Deref<Target=[u8]>+Send+Sync+'static>(&self,buff:T)->AResult<usize>;
+    async fn send(&self,buff:Vec<u8>)->AResult<()>;
     async fn disconnect(&self)->AResult<()>;
 }
 
@@ -80,14 +76,13 @@ impl IPeer for Actor<TCPPeer>{
     }
 
     #[inline]
-    async fn send<T: Deref<Target=[u8]> + Send + Sync + 'static>(&self, buff: T) -> AResult<usize> {
-       self.inner_call(async move|inner|{
-           match inner.get_mut().send(&buff).await{
-               Ok(size)=>Ok(size),
-               Err(er)=>Err(Other(er.into()))
-           }
-
-        }).await
+    async fn send(&self, buff: Vec<u8>) -> AResult<()> {
+        unsafe {
+            match self.deref_inner().send(buff).await {
+                Ok(_) => Ok(()),
+                Err(er) => Err(Other(er.into()))
+            }
+        }
     }
 
     #[inline]

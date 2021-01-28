@@ -11,6 +11,9 @@ use aqueue::{Actor, AError, AResult};
 use crate::IPeer;
 use std::io;
 use tokio::task::JoinHandle;
+use tokio::sync::mpsc::{Sender, Receiver,channel};
+use tokio::io::AsyncWriteExt;
+
 
 pub type ConnectEventType = fn(SocketAddr) -> bool;
 
@@ -62,8 +65,24 @@ impl<I, R,T> TCPServer<I, R,T>
                         }
                     }
                     trace!("start read:{}", addr);
-                    let (reader, sender) = socket.into_split();
-                    let peer = TCPPeer::new(addr, sender);
+                    let (reader, mut sender) = socket.into_split();
+                    let (tx, mut rx):(Sender<Vec<u8>>,Receiver<Vec<u8>>)=channel(1024);
+
+                    tokio::spawn(async move{
+                        while let Some(buff) = rx.recv().await {
+                            if buff.is_empty() {
+                                if let Err(er) =  sender.shutdown().await {
+                                    error!("{} disconnect error:{}", addr, er);
+                                }
+                                break;
+                            } else if let Err(er) = sender.write(&buff).await {
+                                error!("{} send buffer error:{}", addr, er);
+                            }
+                        }
+                    });
+
+
+                    let peer = TCPPeer::new(addr, tx);
                     let input = input_event.clone();
                     let peer_token=token.clone();
                     tokio::spawn(async move {
