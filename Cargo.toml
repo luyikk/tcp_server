@@ -1,6 +1,6 @@
 [package]
 name = "tcpserver"
-version = "0.3.6"
+version = "0.3.7"
 authors = ["yi lu <luyikk@126.com>"]
 edition = "2018"
 license = "MIT/Apache-2.0"
@@ -13,5 +13,5 @@ description = "rust tcp server frame."
 [dependencies]
 tokio = { version = "1", features = ["full"] }
 log="0.4"
-aqueue="0.3"
-data-rw="0.2"
+aqueue="0.3.2"
+data-rw="0.2.4"

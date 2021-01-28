@@ -35,7 +35,9 @@ impl TCPPeer {
     #[inline]
     pub async fn send(&mut self, buff: &[u8]) -> io::Result<usize> {
        if let Some(ref mut sender)=self.sender{
-           sender.write(buff).await
+           let size=  sender.write(buff).await?;
+           sender.flush().await?;
+           Ok(size)
        }else {
            Err(io::Error::new(ErrorKind::ConnectionReset,"ConnectionReset"))
        }
