@@ -72,7 +72,7 @@ impl<I, R,T> TCPServer<I, R,T>
                         while let Some(buff) = rx.recv().await {
                             if buff.is_empty() {
                                 if let Err(er) =  sender.shutdown().await {
-                                    error!("{} disconnect error:{}", addr, er);
+                                    trace!("{} disconnect error:{}", addr, er);
                                 }
                                 break;
                             } else if let Err(er) = sender.write(&buff).await {
