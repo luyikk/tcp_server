@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 use aqueue::{Actor, AResult};
 use aqueue::AError::Other;
 use std::sync::{Arc};
-use tokio::sync::mpsc::Sender;
+use async_channel::Sender;
 use std::error::Error;
 
 
