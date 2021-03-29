@@ -1,57 +1,56 @@
+use crate::peer::TCPPeer;
+use crate::IPeer;
+use aqueue::{AError, AResult, Actor};
+use async_channel::{bounded, Receiver, Sender};
 use log::*;
 use std::error::Error;
 use std::future::Future;
-use std::net::SocketAddr;
-use std::sync::{Arc};
-use tokio::net::{TcpListener, ToSocketAddrs};
-use crate::peer::TCPPeer;
-use std::marker::PhantomData;
-use tokio::net::tcp::OwnedReadHalf;
-use aqueue::{Actor, AError, AResult};
-use crate::IPeer;
 use std::io;
-use tokio::task::JoinHandle;
-use async_channel::{bounded,Sender, Receiver,};
+use std::marker::PhantomData;
+use std::net::SocketAddr;
+use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
-
+use tokio::net::tcp::OwnedReadHalf;
+use tokio::net::{TcpListener, ToSocketAddrs};
+use tokio::task::JoinHandle;
 
 pub type ConnectEventType = fn(SocketAddr) -> bool;
 
-pub struct TCPServer<I, R,T> {
+pub struct TCPServer<I, R, T> {
     listener: Option<TcpListener>,
     connect_event: Option<ConnectEventType>,
     input_event: Arc<I>,
-    _phantom:PhantomData<R>,
-    __phantom:PhantomData<T>
+    _phantom: PhantomData<R>,
+    __phantom: PhantomData<T>,
 }
 
-unsafe impl <I,R,T> Send for TCPServer<I, R,T>{}
-unsafe impl <I,R,T> Sync for TCPServer<I, R,T>{}
+unsafe impl<I, R, T> Send for TCPServer<I, R, T> {}
+unsafe impl<I, R, T> Sync for TCPServer<I, R, T> {}
 
-impl<I, R,T> TCPServer<I, R,T>
-    where
-        I: Fn(OwnedReadHalf,Arc<Actor<TCPPeer>>,T) -> R + Send + Sync + 'static,
-        R: Future<Output = ()> + Send+'static,
-        T:Clone+Send+'static
+impl<I, R, T> TCPServer<I, R, T>
+where
+    I: Fn(OwnedReadHalf, Arc<Actor<TCPPeer>>, T) -> R + Send + Sync + 'static,
+    R: Future<Output = ()> + Send + 'static,
+    T: Clone + Send + 'static,
 {
     /// 创建一个新的TCP服务
     pub(crate) async fn new<A: ToSocketAddrs>(
         addr: A,
         input: I,
-        connect_event:Option<ConnectEventType>
-    ) -> Result<Arc<Actor<TCPServer<I, R,T>>>, Box<dyn Error>> {
+        connect_event: Option<ConnectEventType>,
+    ) -> Result<Arc<Actor<TCPServer<I, R, T>>>, Box<dyn Error>> {
         let listener = TcpListener::bind(addr).await?;
         Ok(Arc::new(Actor::new(TCPServer {
-            listener:Some(listener),
+            listener: Some(listener),
             connect_event,
             input_event: Arc::new(input),
-            _phantom:PhantomData::default(),
-            __phantom:PhantomData::default()
+            _phantom: PhantomData::default(),
+            __phantom: PhantomData::default(),
         })))
     }
 
     /// 启动TCP服务
-    pub async fn start(&mut self,token:T) -> AResult<JoinHandle<io::Result<()>>> {
+    pub async fn start(&mut self, token: T) -> AResult<JoinHandle<io::Result<()>>> {
         if let Some(listener) = self.listener.take() {
             let connect_event = self.connect_event.take();
             let input_event = self.input_event.clone();
@@ -66,9 +65,9 @@ impl<I, R,T> TCPServer<I, R,T>
                     }
                     trace!("start read:{}", addr);
                     let (reader, mut sender) = socket.into_split();
-                    let (tx, rx):(Sender<Vec<u8>>,Receiver<Vec<u8>>)=bounded(1024);
+                    let (tx, rx): (Sender<Vec<u8>>, Receiver<Vec<u8>>) = bounded(1024);
 
-                    tokio::spawn(async move{
+                    tokio::spawn(async move {
                         while let Ok(buff) = rx.recv().await {
                             if buff.is_empty() {
                                 break;
@@ -78,29 +77,26 @@ impl<I, R,T> TCPServer<I, R,T>
                             }
                         }
 
-                        if let Err(er) =  sender.shutdown().await {
+                        if let Err(er) = sender.shutdown().await {
                             trace!("{} disconnect error:{}", addr, er);
                         }
                     });
 
-
                     let peer = TCPPeer::new(addr, tx);
                     let input = input_event.clone();
-                    let peer_token=token.clone();
+                    let peer_token = token.clone();
                     tokio::spawn(async move {
-                        (*input)(reader, peer.clone(),peer_token).await;
+                        (*input)(reader, peer.clone(), peer_token).await;
                         if let Err(er) = peer.disconnect().await {
                             error!("disconnect client:{:?} err:{}", peer.addr(), er);
-                        }
-                        else{
+                        } else {
                             debug!("{} disconnect", peer.addr())
                         }
                     });
                 }
-
             });
 
-            return Ok(join)
+            return Ok(join);
         }
 
         Err(AError::StrErr("not listener or repeat start".into()))
@@ -108,26 +104,25 @@ impl<I, R,T> TCPServer<I, R,T>
 }
 
 #[aqueue::aqueue_trait]
-pub trait ITCPServer<T>{
-    async fn start(&self,token:T)->AResult<JoinHandle<io::Result<()>>>;
-    async fn start_block(&self,token:T)->Result<(),Box<dyn Error>>;
+pub trait ITCPServer<T> {
+    async fn start(&self, token: T) -> AResult<JoinHandle<io::Result<()>>>;
+    async fn start_block(&self, token: T) -> Result<(), Box<dyn Error>>;
 }
 
 #[aqueue::aqueue_trait]
-impl <I, R,T> ITCPServer<T>  for Actor<TCPServer<I, R,T>>
-    where
-        I: Fn(OwnedReadHalf,Arc<Actor<TCPPeer>>,T) -> R + Send + Sync + 'static,
-        R: Future<Output = ()> + Send+'static,
-        T: Clone+Send+Sync+'static{
-
-   async fn start(&self,token:T)->AResult<JoinHandle<io::Result<()>>> {
-        self.inner_call(async move |inner| {
-            inner.get_mut().start(token).await
-        }).await
+impl<I, R, T> ITCPServer<T> for Actor<TCPServer<I, R, T>>
+where
+    I: Fn(OwnedReadHalf, Arc<Actor<TCPPeer>>, T) -> R + Send + Sync + 'static,
+    R: Future<Output = ()> + Send + 'static,
+    T: Clone + Send + Sync + 'static,
+{
+    async fn start(&self, token: T) -> AResult<JoinHandle<io::Result<()>>> {
+        self.inner_call(async move |inner| inner.get_mut().start(token).await)
+            .await
     }
 
-    async fn start_block(&self,token:T) -> Result<(), Box<dyn Error>> {
-        Self::start(self,token).await?.await??;
+    async fn start_block(&self, token: T) -> Result<(), Box<dyn Error>> {
+        Self::start(self, token).await?.await??;
         Ok(())
     }
 }

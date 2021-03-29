@@ -1,9 +1,8 @@
 #![feature(async_closure)]
-mod tcpserver;
-mod peer;
 mod builder;
+mod peer;
+mod tcpserver;
 
 pub use builder::Builder;
 pub use peer::*;
 pub use tcpserver::*;
-
