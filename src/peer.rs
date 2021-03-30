@@ -5,6 +5,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::tcp::OwnedWriteHalf;
 use tokio::io::AsyncWriteExt;
+use std::ops::Deref;
 
 pub struct TCPPeer {
     pub addr: SocketAddr,
@@ -29,7 +30,7 @@ impl TCPPeer {
 
     /// 发送
     #[inline]
-    pub async fn send(&mut self, buff:Vec<u8>) -> Result<usize, Box<dyn Error + Send + Sync>> {
+    pub async fn send<T:Deref<Target=[u8]>+Send+Sync+'static>(&mut self, buff:T) -> Result<usize, Box<dyn Error + Send + Sync>> {
         if let Some(ref mut sender) = self.sender {
             Ok(sender.write(&buff).await?)
         } else {
@@ -52,7 +53,7 @@ impl TCPPeer {
 pub trait IPeer {
     fn addr(&self) -> SocketAddr;
     async fn is_disconnect(&self) -> AResult<bool>;
-    async fn send(&self, buff:Vec<u8>) -> AResult<usize>;
+    async fn send<T:Deref<Target=[u8]>+Send+Sync+'static>(&self, buff:T) -> AResult<usize>;
     async fn disconnect(&self) -> AResult<()>;
 }
 
@@ -70,7 +71,7 @@ impl IPeer for Actor<TCPPeer> {
     }
 
     #[inline]
-    async fn send(&self, buff:Vec<u8>) -> AResult<usize> {
+    async fn send<T:Deref<Target=[u8]>+Send+Sync+'static>(&self, buff:T) -> AResult<usize> {
         if buff.is_empty(){ return  Err(Other("send buff is null".into()))}
         self.inner_call(async move|inner|{
             match inner.get_mut().send(buff).await{
