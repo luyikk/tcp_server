@@ -1,7 +1,6 @@
 use crate::peer::TCPPeer;
 use crate::IPeer;
 use aqueue::{AError, AResult, Actor};
-use async_channel::{bounded, Receiver, Sender};
 use log::*;
 use std::error::Error;
 use std::future::Future;
@@ -9,7 +8,6 @@ use std::io;
 use std::marker::PhantomData;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use tokio::io::AsyncWriteExt;
 use tokio::net::tcp::OwnedReadHalf;
 use tokio::net::{TcpListener, ToSocketAddrs};
 use tokio::task::JoinHandle;
@@ -64,25 +62,25 @@ where
                         }
                     }
                     trace!("start read:{}", addr);
-                    let (reader, mut sender) = socket.into_split();
-                    let (tx, rx): (Sender<Vec<u8>>, Receiver<Vec<u8>>) = bounded(1024);
+                    let (reader, sender) = socket.into_split();
+                    //let (tx, rx): (Sender<Vec<u8>>, Receiver<Vec<u8>>) = bounded(1024);
 
-                    tokio::spawn(async move {
-                        while let Ok(buff) = rx.recv().await {
-                            if buff.is_empty() {
-                                break;
-                            } else if let Err(er) = sender.write(&buff).await {
-                                error!("{} send buffer error:{}", addr, er);
-                                break;
-                            }
-                        }
+                    // tokio::spawn(async move {
+                    //     while let Ok(buff) = rx.recv().await {
+                    //         if buff.is_empty() {
+                    //             break;
+                    //         } else if let Err(er) = sender.write(&buff).await {
+                    //             error!("{} send buffer error:{}", addr, er);
+                    //             break;
+                    //         }
+                    //     }
+                    //
+                    //     if let Err(er) = sender.shutdown().await {
+                    //         trace!("{} disconnect error:{}", addr, er);
+                    //     }
+                    // });
 
-                        if let Err(er) = sender.shutdown().await {
-                            trace!("{} disconnect error:{}", addr, er);
-                        }
-                    });
-
-                    let peer = TCPPeer::new(addr, tx);
+                    let peer = TCPPeer::new(addr, sender);
                     let input = input_event.clone();
                     let peer_token = token.clone();
                     tokio::spawn(async move {

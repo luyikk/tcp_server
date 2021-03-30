@@ -1,6 +1,6 @@
 [package]
 name = "tcpserver"
-version = "0.3.11"
+version = "0.3.12"
 authors = ["yi lu <luyikk@126.com>"]
 edition = "2018"
 license = "MIT/Apache-2.0"
@@ -15,7 +15,7 @@ tokio = { version = "1", features = ["rt", "net","io-util"] }
 log="0.4"
 aqueue="0.3"
 data-rw="0.2"
-async-channel = "1.6"
+
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "net","io-util","macros"] }

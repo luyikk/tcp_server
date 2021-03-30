@@ -1,19 +1,21 @@
 use aqueue::AError::Other;
 use aqueue::{AResult, Actor};
-use async_channel::Sender;
 use std::error::Error;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use tokio::net::tcp::OwnedWriteHalf;
+use tokio::io::AsyncWriteExt;
 
 pub struct TCPPeer {
     pub addr: SocketAddr,
-    pub sender: Option<Sender<Vec<u8>>>,
+    pub sender: Option<OwnedWriteHalf>,
+
 }
 
 impl TCPPeer {
     /// 创建一个TCP PEER
     #[inline]
-    pub fn new(addr: SocketAddr, sender: Sender<Vec<u8>>) -> Arc<Actor<TCPPeer>> {
+    pub fn new(addr: SocketAddr, sender: OwnedWriteHalf) -> Arc<Actor<TCPPeer>> {
         Arc::new(Actor::new(TCPPeer {
             addr,
             sender: Some(sender),
@@ -27,10 +29,9 @@ impl TCPPeer {
 
     /// 发送
     #[inline]
-    pub async fn send(&self, buff: Vec<u8>) -> Result<(), Box<dyn Error + Send + Sync>> {
-        if let Some(sender) = self.sender.clone() {
-            sender.send(buff).await?;
-            Ok(())
+    pub async fn send(&mut self, buff:Vec<u8>) -> Result<usize, Box<dyn Error + Send + Sync>> {
+        if let Some(ref mut sender) = self.sender {
+            Ok(sender.write(&buff).await?)
         } else {
             Err("ConnectionReset".into())
         }
@@ -39,9 +40,8 @@ impl TCPPeer {
     /// 掐线
     #[inline]
     pub async fn disconnect(&mut self) -> Result<(), Box<dyn Error + Send + Sync>> {
-        if let Some(sender) = self.sender.take() {
-            sender.send(Vec::default()).await?;
-            Ok(())
+        if let Some(mut sender) = self.sender.take() {
+            Ok(sender.shutdown().await?)
         } else {
             Ok(())
         }
@@ -52,7 +52,7 @@ impl TCPPeer {
 pub trait IPeer {
     fn addr(&self) -> SocketAddr;
     async fn is_disconnect(&self) -> AResult<bool>;
-    async fn send(&self, buff: Vec<u8>) -> AResult<()>;
+    async fn send(&self, buff:Vec<u8>) -> AResult<usize>;
     async fn disconnect(&self) -> AResult<()>;
 }
 
@@ -70,13 +70,13 @@ impl IPeer for Actor<TCPPeer> {
     }
 
     #[inline]
-    async fn send(&self, buff: Vec<u8>) -> AResult<()> {
-        unsafe {
-            match self.deref_inner().send(buff).await {
-                Ok(_) => Ok(()),
-                Err(er) => Err(Other(er.into())),
+    async fn send(&self, buff:Vec<u8>) -> AResult<usize> {
+        self.inner_call(async move|inner|{
+            match inner.get_mut().send(buff).await{
+                Ok(size)=>Ok(size),
+                Err(er)=>Err(Other(er.into()))
             }
-        }
+        }).await
     }
 
     #[inline]
