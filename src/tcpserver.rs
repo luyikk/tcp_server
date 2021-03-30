@@ -63,30 +63,13 @@ where
                     }
                     trace!("start read:{}", addr);
                     let (reader, sender) = socket.into_split();
-                    //let (tx, rx): (Sender<Vec<u8>>, Receiver<Vec<u8>>) = bounded(1024);
-
-                    // tokio::spawn(async move {
-                    //     while let Ok(buff) = rx.recv().await {
-                    //         if buff.is_empty() {
-                    //             break;
-                    //         } else if let Err(er) = sender.write(&buff).await {
-                    //             error!("{} send buffer error:{}", addr, er);
-                    //             break;
-                    //         }
-                    //     }
-                    //
-                    //     if let Err(er) = sender.shutdown().await {
-                    //         trace!("{} disconnect error:{}", addr, er);
-                    //     }
-                    // });
-
                     let peer = TCPPeer::new(addr, sender);
                     let input = input_event.clone();
                     let peer_token = token.clone();
                     tokio::spawn(async move {
                         (*input)(reader, peer.clone(), peer_token).await;
                         if let Err(er) = peer.disconnect().await {
-                            error!("disconnect client:{:?} err:{}", peer.addr(), er);
+                            debug!("disconnect client:{:?} err:{}", peer.addr(), er);
                         } else {
                             debug!("{} disconnect", peer.addr())
                         }

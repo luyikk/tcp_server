@@ -71,6 +71,7 @@ impl IPeer for Actor<TCPPeer> {
 
     #[inline]
     async fn send(&self, buff:Vec<u8>) -> AResult<usize> {
+        if buff.is_empty(){ return  Err(Other("send buff is null".into()))}
         self.inner_call(async move|inner|{
             match inner.get_mut().send(buff).await{
                 Ok(size)=>Ok(size),
