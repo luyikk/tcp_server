@@ -1,6 +1,6 @@
 [package]
 name = "tcpserver"
-version = "1.0"
+version = "1.0.0"
 authors = ["yi lu <luyikk@126.com>"]
 edition = "2018"
 license = "MIT/Apache-2.0"
