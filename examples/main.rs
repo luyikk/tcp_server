@@ -1,15 +1,15 @@
 #![feature(async_closure)]
 
-use std::error::Error;
 use std::sync::Arc;
 use tcpserver::{Builder, IPeer, ITCPServer};
 use tokio::io::AsyncReadExt;
+use anyhow::*;
 
 #[global_allocator]
-static  MIN:mimalloc::MiMalloc=mimalloc::MiMalloc;
+static MIN: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn main() -> Result<()> {
     let tcpserver: Arc<dyn ITCPServer<()>> = Builder::new("0.0.0.0:5555")
         .set_connect_event(|addr| {
             println!("{:?} connect", addr);

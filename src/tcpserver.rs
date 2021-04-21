@@ -1,6 +1,7 @@
 use crate::peer::TCPPeer;
 use crate::IPeer;
-use aqueue::{AError, AResult, Actor};
+use anyhow::*;
+use aqueue::Actor;
 use log::*;
 use std::error::Error;
 use std::future::Future;
@@ -48,7 +49,7 @@ where
     }
 
     /// 启动TCP服务
-    pub async fn start(&mut self, token: T) -> AResult<JoinHandle<io::Result<()>>> {
+    pub async fn start(&mut self, token: T) -> Result<JoinHandle<io::Result<()>>> {
         if let Some(listener) = self.listener.take() {
             let connect_event = self.connect_event.take();
             let input_event = self.input_event.clone();
@@ -80,29 +81,29 @@ where
             return Ok(join);
         }
 
-        Err(AError::StrErr("not listener or repeat start".into()))
+        bail!("not listener or repeat start")
     }
 }
 
-#[aqueue::aqueue_trait]
+#[async_trait::async_trait]
 pub trait ITCPServer<T> {
-    async fn start(&self, token: T) -> AResult<JoinHandle<io::Result<()>>>;
-    async fn start_block(&self, token: T) -> Result<(), Box<dyn Error>>;
+    async fn start(&self, token: T) -> Result<JoinHandle<io::Result<()>>>;
+    async fn start_block(&self, token: T) -> Result<()>;
 }
 
-#[aqueue::aqueue_trait]
+#[async_trait::async_trait]
 impl<I, R, T> ITCPServer<T> for Actor<TCPServer<I, R, T>>
 where
     I: Fn(OwnedReadHalf, Arc<Actor<TCPPeer>>, T) -> R + Send + Sync + 'static,
     R: Future<Output = ()> + Send + 'static,
     T: Clone + Send + Sync + 'static,
 {
-    async fn start(&self, token: T) -> AResult<JoinHandle<io::Result<()>>> {
+    async fn start(&self, token: T) -> Result<JoinHandle<io::Result<()>>> {
         self.inner_call(async move |inner| inner.get_mut().start(token).await)
             .await
     }
 
-    async fn start_block(&self, token: T) -> Result<(), Box<dyn Error>> {
+    async fn start_block(&self, token: T) -> Result<()> {
         Self::start(self, token).await?.await??;
         Ok(())
     }

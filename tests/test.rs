@@ -1,12 +1,12 @@
 #![feature(async_closure)]
 
-use std::error::Error;
 use std::sync::Arc;
 use tcpserver::{Builder, IPeer, ITCPServer};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use anyhow::*;
 
 #[tokio::test]
-async fn test_builder() -> Result<(), Box<dyn Error>> {
+async fn test_builder() -> Result<()> {
     let tcpserver = Builder::new("0.0.0.0:8998")
         .set_connect_event(|addr| {
             println!("{:?} connect", addr);
@@ -31,7 +31,7 @@ async fn test_builder() -> Result<(), Box<dyn Error>> {
 }
 
 #[tokio::test]
-async fn echo_server() -> Result<(), Box<dyn Error>> {
+async fn echo_server() -> Result<()> {
     struct Foo {
         serv: Arc<dyn ITCPServer<()>>,
     }
@@ -40,7 +40,7 @@ async fn echo_server() -> Result<(), Box<dyn Error>> {
     unsafe impl Sync for Foo {}
 
     impl Foo {
-        pub async fn start(&self) -> Result<(), Box<dyn Error>> {
+        pub async fn start(&self) -> Result<()> {
             self.serv.start_block(()).await
         }
     }
@@ -50,8 +50,6 @@ async fn echo_server() -> Result<(), Box<dyn Error>> {
             true
         })
         .set_input_event(async move |mut reader, peer, _| {
-
-
             let mut buff = [0; 4096];
             while let Ok(len) = reader.read(&mut buff).await {
                 if len == 0 {
@@ -72,7 +70,7 @@ async fn echo_server() -> Result<(), Box<dyn Error>> {
 }
 
 #[tokio::test]
-async fn echo_client() -> Result<(), Box<dyn Error>> {
+async fn echo_client() -> Result<()> {
     let mut tcp_stream = tokio::net::TcpStream::connect("127.0.0.1:5555").await?;
     let data = b"12231222222221";
     let mut read = [0; 14];
