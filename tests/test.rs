@@ -13,7 +13,7 @@ async fn test_builder() -> Result<()> {
             println!("{:?} connect", addr);
             true
         })
-        .set_stream_init(|tcp_stream|{
+        .set_stream_init(async move |tcp_stream|{
             Ok(tcp_stream)
         })
         .set_input_event(async move |mut reader, peer, _| {
@@ -55,7 +55,7 @@ async fn echo_server()->Result<()> {
             println!("{:?} connect", addr);
             true
         })
-        .set_stream_init(|tcp_stream|{
+        .set_stream_init(async move |tcp_stream|{
             Ok(tcp_stream)
         })
         .set_input_event(async move |mut reader, peer, _| {
