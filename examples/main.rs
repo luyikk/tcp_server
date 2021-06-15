@@ -21,7 +21,7 @@ async fn main() -> Result<()> {
                 if len == 0 {
                     break;
                 }
-                peer.send(buff[..len].to_vec()).await.unwrap();
+                peer.send(&buff[..len]).await.unwrap();
             }
             println!("{:?} disconnect", peer.addr());
         })

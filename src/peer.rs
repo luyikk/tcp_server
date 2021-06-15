@@ -1,7 +1,6 @@
 use anyhow::*;
 use aqueue::Actor;
 use std::net::SocketAddr;
-use std::ops::Deref;
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::net::tcp::OwnedWriteHalf;
@@ -28,12 +27,12 @@ impl TCPPeer {
 
     /// 发送
     #[inline]
-    pub async fn send<T: Deref<Target = [u8]> + Send + Sync + 'static>(
-        &mut self,
-        buff: T,
+    pub async fn send<'a>(
+        &'a mut self,
+        buff: &'a[u8],
     ) -> Result<usize> {
         if let Some(ref mut sender) = self.sender {
-            Ok(sender.write(&buff).await?)
+            Ok(sender.write(buff).await?)
         } else {
             bail!("ConnectionReset")
         }
@@ -54,7 +53,7 @@ impl TCPPeer {
 pub trait IPeer {
     fn addr(&self) -> SocketAddr;
     async fn is_disconnect(&self) -> Result<bool>;
-    async fn send<T: Deref<Target = [u8]> + Send + Sync + 'static>(&self, buff: T)
+    async fn send<'a>(&'a self, buff: &'a [u8])
         -> Result<usize>;
     async fn disconnect(&self) -> Result<()>;
 }
@@ -73,13 +72,15 @@ impl IPeer for Actor<TCPPeer> {
     }
 
     #[inline]
-    async fn send<T: Deref<Target = [u8]> + Send + Sync + 'static>(
-        &self,
-        buff: T,
+    async fn send<'a>(
+        &'a self,
+        buff: &'a [u8],
     ) -> Result<usize> {
         ensure!(!buff.is_empty(), "send buff is null");
-        self.inner_call(async move |inner| inner.get_mut().send(buff).await)
-            .await
+        unsafe {
+            self.inner_call_ref(async move |inner| inner.get_mut().send(buff).await)
+                .await
+        }
     }
 
     #[inline]

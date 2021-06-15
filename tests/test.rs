@@ -19,7 +19,7 @@ async fn test_builder() -> Result<()> {
                     break;
                 }
                 println!("{:?}", &buff[..len]);
-                peer.send(buff[..len].to_vec()).await.unwrap();
+                peer.send(&buff[..len]).await.unwrap();
             }
             println!("{:?} disconnect", peer.addr());
         })
@@ -56,7 +56,7 @@ async fn echo_server() -> Result<()> {
                     break;
                 }
                 println!("{:?}", &buff[..len]);
-                peer.send(buff[..len].to_vec()).await.unwrap();
+                peer.send(&buff[..len]).await.unwrap();
             }
             println!("{:?} disconnect", peer.addr());
         })
