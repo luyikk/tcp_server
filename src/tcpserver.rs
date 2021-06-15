@@ -71,13 +71,14 @@ where
                         }
                     }
                     trace!("start read:{}", addr);
-                    match (*stream_init)(socket).await {
-                        Ok(socket)=> {
-                            let (reader, sender) = tokio::io::split(socket);
-                            let peer = TCPPeer::new(addr, sender);
-                            let input = input_event.clone();
-                            let peer_token = token.clone();
-                            tokio::spawn(async move {
+                    let input = input_event.clone();
+                    let peer_token = token.clone();
+                    let stream_init=stream_init.clone();
+                    tokio::spawn(async move {
+                        match (*stream_init)(socket).await {
+                            Ok(socket) => {
+                                let (reader, sender) = tokio::io::split(socket);
+                                let peer = TCPPeer::new(addr, sender);
                                 if let Err(err) = (*input)(reader, peer.clone(), peer_token).await {
                                     error!("input data error:{}", err);
                                 }
@@ -86,13 +87,14 @@ where
                                 } else {
                                     debug!("{} disconnect", peer.addr())
                                 }
-                            });
-                        },
-                        Err(err)=>{
-                            warn!("init stream err:{}",err);
+                            },
+                            Err(err) => {
+                                warn!("init stream err:{}", err);
+                            }
                         }
-                    }
+                    });
                 }
+
             });
 
             return Ok(join);
