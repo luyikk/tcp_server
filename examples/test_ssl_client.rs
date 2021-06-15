@@ -5,7 +5,6 @@ use tokio::net::TcpStream;
 use std::pin::Pin;
 use tokio::io::{AsyncWriteExt, AsyncReadExt};
 
-#[cfg(tls)]
 #[tokio::main]
 async fn main()->Result<()> {
     let mut connector = SslConnector::builder(SslMethod::tls()).unwrap();
