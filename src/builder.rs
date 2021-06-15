@@ -3,12 +3,12 @@ use aqueue::Actor;
 use std::future::Future;
 use std::marker::PhantomData;
 use std::sync::Arc;
-use tokio::net::ToSocketAddrs;
+use tokio::net::{ToSocketAddrs, TcpStream};
 use tokio::io::{ReadHalf, AsyncRead, AsyncWrite};
 use anyhow::*;
 
 /// TCP server builder
-pub struct Builder<I, R, A, T,C> {
+pub struct Builder<I, R, A, T,C=TcpStream> {
     input: Option<I>,
     connect_event: Option<ConnectEventType>,
     stream_init:Option<StreamInitType<C>>,
@@ -48,6 +48,7 @@ where
         self
     }
 
+    /// 设置输入流类型,例如TCPStream,SSLStream or GZIPStream
     pub fn set_stream_init(mut self,c:StreamInitType<C>)->Self{
         self.stream_init=Some(c);
         self
