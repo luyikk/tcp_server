@@ -13,34 +13,36 @@ use tokio::task::JoinHandle;
 use tokio::io::{ReadHalf, AsyncRead, AsyncWrite};
 
 pub type ConnectEventType = fn(SocketAddr) -> bool;
-pub type StreamInitType<C>=fn(TcpStream)->Result<C>;
+pub type StreamInitType<B>=fn(TcpStream)->B;
 
-pub struct TCPServer<I, R, T,C> {
+pub struct TCPServer<I, R, T,B,C> {
     listener: Option<TcpListener>,
     connect_event: Option<ConnectEventType>,
-    stream_init: Arc<StreamInitType<C>>,
+    stream_init: Arc<StreamInitType<B>>,
     input_event: Arc<I>,
     _phantom1: PhantomData<R>,
     _phantom2: PhantomData<T>,
+    _phantom3: PhantomData<C>,
 }
 
-unsafe impl<I, R, T,C> Send for TCPServer<I, R, T,C> {}
-unsafe impl<I, R, T,C> Sync for TCPServer<I, R, T,C> {}
+unsafe impl<I, R, T,B,C> Send for TCPServer<I, R, T,B,C> {}
+unsafe impl<I, R, T,B,C> Sync for TCPServer<I, R, T,B,C> {}
 
-impl<I, R, T,C> TCPServer<I, R, T,C>
+impl<I, R, T,B,C> TCPServer<I, R, T,B,C>
 where
     I: Fn(ReadHalf<C>, Arc<Actor<TCPPeer<C>>>, T) -> R + Send + Sync + 'static,
     R: Future<Output = Result<()>> + Send + 'static,
     T: Clone + Send + 'static,
+    B: Future<Output = Result<C>> + Send + 'static,
     C: AsyncRead + AsyncWrite + Send +'static
 {
     /// 创建一个新的TCP服务
     pub(crate) async fn new<A: ToSocketAddrs>(
         addr: A,
-        stream_init: StreamInitType<C>,
+        stream_init: StreamInitType<B>,
         input: I,
         connect_event: Option<ConnectEventType>,
-    ) -> Result<Arc<Actor<TCPServer<I, R, T,C>>>, Box<dyn Error>> {
+    ) -> Result<Arc<Actor<TCPServer<I, R, T,B,C>>>, Box<dyn Error>> {
         let listener = TcpListener::bind(addr).await?;
         Ok(Arc::new(Actor::new(TCPServer {
             listener: Some(listener),
@@ -48,7 +50,8 @@ where
             stream_init:Arc::new(stream_init),
             input_event: Arc::new(input),
             _phantom1: PhantomData::default(),
-            _phantom2: PhantomData::default()
+            _phantom2: PhantomData::default(),
+            _phantom3:PhantomData::default()
         })))
     }
 
@@ -68,22 +71,27 @@ where
                         }
                     }
                     trace!("start read:{}", addr);
-                    let socket=(*stream_init)(socket)?;
-                    let (reader, sender) =tokio::io::split(socket);
-                    let peer = TCPPeer::new(addr, sender);
-                    let input = input_event.clone();
-                    let peer_token = token.clone();
-                    tokio::spawn(async move {
-                        if let Err(err)=(*input)(reader, peer.clone(), peer_token).await{
-                            error!("input data error:{}",err);
+                    match (*stream_init)(socket).await {
+                        Ok(socket)=> {
+                            let (reader, sender) = tokio::io::split(socket);
+                            let peer = TCPPeer::new(addr, sender);
+                            let input = input_event.clone();
+                            let peer_token = token.clone();
+                            tokio::spawn(async move {
+                                if let Err(err) = (*input)(reader, peer.clone(), peer_token).await {
+                                    error!("input data error:{}", err);
+                                }
+                                if let Err(er) = peer.disconnect().await {
+                                    debug!("disconnect client:{:?} err:{}", peer.addr(), er);
+                                } else {
+                                    debug!("{} disconnect", peer.addr())
+                                }
+                            });
+                        },
+                        Err(err)=>{
+                            warn!("init stream err:{}",err);
                         }
-                        if let Err(er) = peer.disconnect().await {
-                            debug!("disconnect client:{:?} err:{}", peer.addr(), er);
-                        } else {
-                            debug!("{} disconnect", peer.addr())
-                        }
-
-                    });
+                    }
                 }
             });
 
@@ -101,11 +109,12 @@ pub trait ITCPServer<T> {
 }
 
 #[async_trait::async_trait]
-impl<I, R, T,C> ITCPServer<T> for Actor<TCPServer<I, R, T,C>>
+impl<I, R, T,B,C> ITCPServer<T> for Actor<TCPServer<I, R, T,B,C>>
 where
     I: Fn(ReadHalf<C>, Arc<Actor<TCPPeer<C>>>, T) -> R + Send + Sync + 'static,
     R: Future<Output = Result<()>> + Send + 'static,
     T: Clone + Send + Sync + 'static,
+    B: Future<Output = Result<C>> + Send + 'static,
     C: AsyncRead + AsyncWrite + Send +'static
 {
     async fn start(&self, token: T) -> Result<JoinHandle<Result<()>>> {

@@ -21,6 +21,11 @@ anyhow="1.0"
 [dev-dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "net","io-util","macros"] }
 mimalloc = { version="0.1",default-features=false}
+lazy_static="1.4"
+openssl = "0.10"
+openssl-sys = "0.9"
+tokio-openssl = "0.6"
+env_logger = "0.8"
 
 [profile.dev]
 panic="abort"
