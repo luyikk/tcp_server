@@ -8,15 +8,21 @@ use anyhow::*;
 use tokio_openssl::SslStream;
 use std::pin::Pin;
 use log::LevelFilter;
+use std::time::Duration;
+use tokio::time::sleep;
+
+
+
 
 lazy_static!{
     pub static ref SSL:SslAcceptor={
+
         let mut acceptor = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
-        acceptor
-            .set_private_key_file("tests/server_key.pem", SslFiletype::PEM)
+         acceptor
+            .set_private_key_file("tests/key.pem", SslFiletype::PEM)
             .unwrap();
-        acceptor
-            .set_certificate_chain_file("tests/server_crt.pem")
+         acceptor
+            .set_certificate_chain_file("tests/cert.pem")
             .unwrap();
         acceptor.build()
     };
@@ -26,6 +32,7 @@ lazy_static!{
 #[tokio::main]
 async fn main()->Result<()> {
 
+    SSL.context();
     env_logger::Builder::new().filter_level(LevelFilter::Debug).init();
     let tcpserver: Arc<dyn ITCPServer<()>> = Builder::new("0.0.0.0:5555")
         .set_connect_event(|addr| {
@@ -33,8 +40,9 @@ async fn main()->Result<()> {
             true
         })
         .set_stream_init(async move |tcp_stream|{
-            let ssl = Ssl::new(SSL.context()).unwrap();
+            let ssl = Ssl::new(SSL.context())?;
             let mut stream = SslStream::new(ssl, tcp_stream)?;
+            sleep(Duration::from_millis(200)).await;
             Pin::new(&mut stream).accept().await?;
             Ok(stream)
         })
@@ -44,7 +52,7 @@ async fn main()->Result<()> {
                 if len == 0 {
                     break;
                 }
-                peer.send(&buff[..len]).await?;
+                peer.send(b"200\r\n").await?;
             }
             println!("{:?} disconnect", peer.addr());
             Ok(())
