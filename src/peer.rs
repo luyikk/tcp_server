@@ -2,18 +2,19 @@ use anyhow::*;
 use aqueue::Actor;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use tokio::io::AsyncWriteExt;
-use tokio::net::tcp::OwnedWriteHalf;
+use tokio::io::{AsyncWriteExt, AsyncRead, AsyncWrite};
+use tokio::io::WriteHalf;
 
-pub struct TCPPeer {
+pub struct TCPPeer<T> {
     pub addr: SocketAddr,
-    pub sender: Option<OwnedWriteHalf>,
+    pub sender: Option<WriteHalf<T>>,
 }
 
-impl TCPPeer {
+impl<T> TCPPeer<T>
+    where T: AsyncRead + AsyncWrite + Send +'static {
     /// 创建一个TCP PEER
     #[inline]
-    pub fn new(addr: SocketAddr, sender: OwnedWriteHalf) -> Arc<Actor<TCPPeer>> {
+    pub fn new(addr: SocketAddr, sender: WriteHalf<T>) -> Arc<Actor<TCPPeer<T>>> {
         Arc::new(Actor::new(TCPPeer {
             addr,
             sender: Some(sender),
@@ -29,7 +30,7 @@ impl TCPPeer {
     #[inline]
     pub async fn send<'a>(
         &'a mut self,
-        buff: &'a[u8],
+        buff: &'a [u8],
     ) -> Result<usize> {
         if let Some(ref mut sender) = self.sender {
             Ok(sender.write(buff).await?)
@@ -59,7 +60,8 @@ pub trait IPeer {
 }
 
 #[async_trait::async_trait]
-impl IPeer for Actor<TCPPeer> {
+impl<T> IPeer for Actor<TCPPeer<T>>
+    where T: AsyncRead + AsyncWrite+Send+'static {
     #[inline]
     fn addr(&self) -> SocketAddr {
         unsafe { self.deref_inner().addr }

@@ -5,12 +5,16 @@ use tcpserver::{Builder, IPeer, ITCPServer};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use anyhow::*;
 
+
 #[tokio::test]
 async fn test_builder() -> Result<()> {
     let tcpserver = Builder::new("0.0.0.0:8998")
         .set_connect_event(|addr| {
             println!("{:?} connect", addr);
             true
+        })
+        .set_stream_init(|tcp_stream|{
+            Ok(tcp_stream)
         })
         .set_input_event(async move |mut reader, peer, _| {
             let mut buff = [0; 4096];
@@ -19,9 +23,10 @@ async fn test_builder() -> Result<()> {
                     break;
                 }
                 println!("{:?}", &buff[..len]);
-                peer.send(&buff[..len]).await.unwrap();
+                peer.send(&buff[..len]).await?;
             }
             println!("{:?} disconnect", peer.addr());
+            Ok(())
         })
         .build()
         .await;
@@ -30,8 +35,9 @@ async fn test_builder() -> Result<()> {
     Ok(())
 }
 
+
 #[tokio::test]
-async fn echo_server() -> Result<()> {
+async fn echo_server()->Result<()> {
     struct Foo {
         serv: Arc<dyn ITCPServer<()>>,
     }
@@ -49,6 +55,9 @@ async fn echo_server() -> Result<()> {
             println!("{:?} connect", addr);
             true
         })
+        .set_stream_init(|tcp_stream|{
+            Ok(tcp_stream)
+        })
         .set_input_event(async move |mut reader, peer, _| {
             let mut buff = [0; 4096];
             while let Ok(len) = reader.read(&mut buff).await {
@@ -56,9 +65,10 @@ async fn echo_server() -> Result<()> {
                     break;
                 }
                 println!("{:?}", &buff[..len]);
-                peer.send(&buff[..len]).await.unwrap();
+                peer.send(&buff[..len]).await?;
             }
             println!("{:?} disconnect", peer.addr());
+            Ok(())
         })
         .build()
         .await;

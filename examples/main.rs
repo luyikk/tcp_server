@@ -15,15 +15,19 @@ async fn main() -> Result<()> {
             println!("{:?} connect", addr);
             true
         })
+        .set_stream_init(|tcp_stream|{
+            Ok(tcp_stream)
+        })
         .set_input_event(async move |mut reader, peer, _| {
             let mut buff = [0; 4096];
             while let Ok(len) = reader.read(&mut buff).await {
                 if len == 0 {
                     break;
                 }
-                peer.send(&buff[..len]).await.unwrap();
+                peer.send(&buff[..len]).await?;
             }
             println!("{:?} disconnect", peer.addr());
+            Ok(())
         })
         .build()
         .await;

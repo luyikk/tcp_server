@@ -1,31 +1,35 @@
-use crate::{ConnectEventType, TCPPeer, TCPServer};
+use crate::{ConnectEventType, TCPPeer, TCPServer, StreamInitType};
 use aqueue::Actor;
 use std::future::Future;
 use std::marker::PhantomData;
 use std::sync::Arc;
-use tokio::net::tcp::OwnedReadHalf;
 use tokio::net::ToSocketAddrs;
+use tokio::io::{ReadHalf, AsyncRead, AsyncWrite};
+use anyhow::*;
 
 /// TCP server builder
-pub struct Builder<I, R, A, T> {
+pub struct Builder<I, R, A, T,C> {
     input: Option<I>,
     connect_event: Option<ConnectEventType>,
+    stream_init:Option<StreamInitType<C>>,
     addr: A,
     _phantom1: PhantomData<R>,
     _phantom2: PhantomData<T>,
 }
 
-impl<I, R, A, T> Builder<I, R, A, T>
+impl<I, R, A, T, C> Builder<I, R, A, T, C>
 where
-    I: Fn(OwnedReadHalf, Arc<Actor<TCPPeer>>, T) -> R + Send + Sync + 'static,
-    R: Future<Output = ()> + Send + 'static,
+    I: Fn(ReadHalf<C>, Arc<Actor<TCPPeer<C>>>, T) -> R + Send + Sync + 'static,
+    R: Future<Output = Result<()>> + Send + 'static,
     A: ToSocketAddrs,
     T: Clone + Send + 'static,
+    C: AsyncRead + AsyncWrite + Send +'static
 {
-    pub fn new(addr: A) -> Builder<I, R, A, T> {
+    pub fn new(addr: A) -> Builder<I, R, A, T,C> {
         Builder {
             input: None,
             connect_event: None,
+            stream_init:None,
             addr,
             _phantom1: PhantomData::default(),
             _phantom2: PhantomData::default(),
@@ -44,16 +48,24 @@ where
         self
     }
 
+    pub fn set_stream_init(mut self,c:StreamInitType<C>)->Self{
+        self.stream_init=Some(c);
+        self
+    }
+
     /// 生成TCPSERVER,如果没有设置 tcp input 将报错
-    pub async fn build(mut self) -> Arc<Actor<TCPServer<I, R, T>>> {
+    pub async fn build(mut self) -> Arc<Actor<TCPServer<I, R, T, C>>> {
         if let Some(input) = self.input.take() {
-            return if let Some(connect) = self.connect_event.take() {
-                TCPServer::new(self.addr, input, Some(connect))
-                    .await
-                    .unwrap()
-            } else {
-                TCPServer::new(self.addr, input, None).await.unwrap()
-            };
+            if let Some(stream_init)=self.stream_init.take() {
+                return if let Some(connect) = self.connect_event.take() {
+                    TCPServer::new(self.addr,stream_init ,input, Some(connect))
+                        .await
+                        .unwrap()
+                } else {
+                    TCPServer::new(self.addr, stream_init,input, None).await.unwrap()
+                };
+            }
+            panic!("stream_init is no settings,please use set_stream_init function.");
         }
         panic!("input event is no settings,please use set_input_event function set input event.");
     }
