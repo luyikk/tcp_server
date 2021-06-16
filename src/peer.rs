@@ -39,6 +39,31 @@ impl<T> TCPPeer<T>
         }
     }
 
+    /// 发送全部
+    #[inline]
+    pub async fn send_all<'a>(
+        &'a mut self,
+        buff: &'a [u8],
+    ) -> Result<()> {
+        if let Some(ref mut sender) = self.sender {
+            sender.write_all(buff).await?;
+            Ok(())
+        } else {
+            bail!("ConnectionReset")
+        }
+    }
+
+    /// flush
+    #[inline]
+    pub async fn flush(&mut self)->Result<()>{
+        if let Some(ref mut sender) = self.sender {
+            sender.flush().await?;
+            Ok(())
+        } else {
+            bail!("ConnectionReset")
+        }
+    }
+
     /// 掐线
     #[inline]
     pub async fn disconnect(&mut self) -> Result<()> {
@@ -56,6 +81,9 @@ pub trait IPeer {
     async fn is_disconnect(&self) -> Result<bool>;
     async fn send<'a>(&'a self, buff: &'a [u8])
         -> Result<usize>;
+    async fn send_all<'a>(&'a self, buff: &'a [u8])
+                      -> Result<()>;
+    async fn flush(&mut self)->Result<()>;
     async fn disconnect(&self) -> Result<()>;
 }
 
@@ -83,6 +111,19 @@ impl<T> IPeer for Actor<TCPPeer<T>>
             self.inner_call_ref(async move |inner| inner.get_mut().send(buff).await)
                 .await
         }
+    }
+
+    async fn send_all<'a>(&'a self, buff: &'a [u8]) -> Result<()> {
+        ensure!(!buff.is_empty(), "send buff is null");
+        unsafe {
+            self.inner_call_ref(async move |inner| inner.get_mut().send_all(buff).await)
+                .await
+        }
+    }
+
+    async fn flush(&mut self) -> Result<()> {
+        self.inner_call(async move |inner| inner.get_mut().flush().await)
+            .await
     }
 
     #[inline]
