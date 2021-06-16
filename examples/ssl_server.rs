@@ -2,7 +2,7 @@
 use openssl::ssl::{SslAcceptor, SslMethod, SslFiletype, Ssl};
 use lazy_static::lazy_static;
 use std::sync::Arc;
-use tcpserver::{Builder,  ITCPServer};
+use tcpserver::{Builder, ITCPServer, IPeer};
 use tokio::io::AsyncReadExt;
 use anyhow::*;
 use tokio_openssl::SslStream;

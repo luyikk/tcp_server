@@ -1,7 +1,7 @@
 #![feature(async_closure)]
 
 use std::sync::Arc;
-use tcpserver::{Builder, ITCPServer};
+use tcpserver::{Builder, ITCPServer, IPeer};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use anyhow::*;
 
