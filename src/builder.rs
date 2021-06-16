@@ -1,4 +1,4 @@
-use crate::{ConnectEventType, TCPPeer, TCPServer, StreamInitType};
+use crate::{ConnectEventType, TCPServer, StreamInitType, IPeer};
 use aqueue::Actor;
 use std::future::Future;
 use std::marker::PhantomData;
@@ -20,7 +20,7 @@ pub struct Builder<I, R, A, T,B,C> {
 
 impl<I, R, A, T, B,C> Builder<I, R, A, T, B,C>
 where
-    I: Fn(ReadHalf<C>, Arc<Actor<TCPPeer<C>>>, T) -> R + Send + Sync + 'static,
+    I: Fn(ReadHalf<C>, Arc<dyn IPeer>, T) -> R + Send + Sync + 'static,
     R: Future<Output = Result<()>> + Send + 'static,
     A: ToSocketAddrs,
     T: Clone + Send + 'static,

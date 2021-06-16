@@ -30,7 +30,7 @@ unsafe impl<I, R, T,B,C> Sync for TCPServer<I, R, T,B,C> {}
 
 impl<I, R, T,B,C> TCPServer<I, R, T,B,C>
 where
-    I: Fn(ReadHalf<C>, Arc<Actor<TCPPeer<C>>>, T) -> R + Send + Sync + 'static,
+    I: Fn(ReadHalf<C>, Arc<dyn IPeer>, T) -> R + Send + Sync + 'static,
     R: Future<Output = Result<()>> + Send + 'static,
     T: Clone + Send + 'static,
     B: Future<Output = Result<C>> + Send + 'static,
@@ -113,7 +113,7 @@ pub trait ITCPServer<T> {
 #[async_trait::async_trait]
 impl<I, R, T,B,C> ITCPServer<T> for Actor<TCPServer<I, R, T,B,C>>
 where
-    I: Fn(ReadHalf<C>, Arc<Actor<TCPPeer<C>>>, T) -> R + Send + Sync + 'static,
+    I: Fn(ReadHalf<C>, Arc<dyn IPeer>, T) -> R + Send + Sync + 'static,
     R: Future<Output = Result<()>> + Send + 'static,
     T: Clone + Send + Sync + 'static,
     B: Future<Output = Result<C>> + Send + 'static,

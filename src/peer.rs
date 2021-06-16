@@ -76,7 +76,7 @@ impl<T> TCPPeer<T>
 }
 
 #[async_trait::async_trait]
-pub trait IPeer {
+pub trait IPeer:Sync+Send {
     fn addr(&self) -> SocketAddr;
     async fn is_disconnect(&self) -> Result<bool>;
     async fn send<'a>(&'a self, buff: &'a [u8])
