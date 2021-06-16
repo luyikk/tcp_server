@@ -2,8 +2,8 @@ use anyhow::*;
 use aqueue::Actor;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use tokio::io::{AsyncWriteExt, AsyncRead, AsyncWrite};
 use tokio::io::WriteHalf;
+use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt};
 
 pub struct TCPPeer<T> {
     pub addr: SocketAddr,
@@ -11,7 +11,9 @@ pub struct TCPPeer<T> {
 }
 
 impl<T> TCPPeer<T>
-    where T: AsyncRead + AsyncWrite + Send +'static {
+where
+    T: AsyncRead + AsyncWrite + Send + 'static,
+{
     /// 创建一个TCP PEER
     #[inline]
     pub fn new(addr: SocketAddr, sender: WriteHalf<T>) -> Arc<Actor<TCPPeer<T>>> {
@@ -28,10 +30,7 @@ impl<T> TCPPeer<T>
 
     /// 发送
     #[inline]
-    pub async fn send<'a>(
-        &'a mut self,
-        buff: &'a [u8],
-    ) -> Result<usize> {
+    pub async fn send<'a>(&'a mut self, buff: &'a [u8]) -> Result<usize> {
         if let Some(ref mut sender) = self.sender {
             Ok(sender.write(buff).await?)
         } else {
@@ -41,10 +40,7 @@ impl<T> TCPPeer<T>
 
     /// 发送全部
     #[inline]
-    pub async fn send_all<'a>(
-        &'a mut self,
-        buff: &'a [u8],
-    ) -> Result<()> {
+    pub async fn send_all<'a>(&'a mut self, buff: &'a [u8]) -> Result<()> {
         if let Some(ref mut sender) = self.sender {
             sender.write_all(buff).await?;
             Ok(())
@@ -55,7 +51,7 @@ impl<T> TCPPeer<T>
 
     /// flush
     #[inline]
-    pub async fn flush(&mut self)->Result<()>{
+    pub async fn flush(&mut self) -> Result<()> {
         if let Some(ref mut sender) = self.sender {
             sender.flush().await?;
             Ok(())
@@ -76,20 +72,20 @@ impl<T> TCPPeer<T>
 }
 
 #[async_trait::async_trait]
-pub trait IPeer:Sync+Send {
+pub trait IPeer: Sync + Send {
     fn addr(&self) -> SocketAddr;
     async fn is_disconnect(&self) -> Result<bool>;
-    async fn send<'a>(&'a self, buff: &'a [u8])
-        -> Result<usize>;
-    async fn send_all<'a>(&'a self, buff: &'a [u8])
-                      -> Result<()>;
-    async fn flush(&mut self)->Result<()>;
+    async fn send<'a>(&'a self, buff: &'a [u8]) -> Result<usize>;
+    async fn send_all<'a>(&'a self, buff: &'a [u8]) -> Result<()>;
+    async fn flush(&mut self) -> Result<()>;
     async fn disconnect(&self) -> Result<()>;
 }
 
 #[async_trait::async_trait]
 impl<T> IPeer for Actor<TCPPeer<T>>
-    where T: AsyncRead + AsyncWrite+Send+'static {
+where
+    T: AsyncRead + AsyncWrite + Send + 'static,
+{
     #[inline]
     fn addr(&self) -> SocketAddr {
         unsafe { self.deref_inner().addr }
@@ -102,10 +98,7 @@ impl<T> IPeer for Actor<TCPPeer<T>>
     }
 
     #[inline]
-    async fn send<'a>(
-        &'a self,
-        buff: &'a [u8],
-    ) -> Result<usize> {
+    async fn send<'a>(&'a self, buff: &'a [u8]) -> Result<usize> {
         ensure!(!buff.is_empty(), "send buff is null");
         unsafe {
             self.inner_call_ref(async move |inner| inner.get_mut().send(buff).await)

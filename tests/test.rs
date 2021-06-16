@@ -1,10 +1,9 @@
 #![feature(async_closure)]
 
-use std::sync::Arc;
-use tcpserver::{Builder, ITCPServer, IPeer};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use anyhow::*;
-
+use std::sync::Arc;
+use tcpserver::{Builder, IPeer, ITCPServer};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[tokio::test]
 async fn test_builder() -> Result<()> {
@@ -13,9 +12,7 @@ async fn test_builder() -> Result<()> {
             println!("{:?} connect", addr);
             true
         })
-        .set_stream_init(async move |tcp_stream|{
-            Ok(tcp_stream)
-        })
+        .set_stream_init(async move |tcp_stream| Ok(tcp_stream))
         .set_input_event(async move |mut reader, peer, _| {
             let mut buff = [0; 4096];
             while let Ok(len) = reader.read(&mut buff).await {
@@ -35,9 +32,8 @@ async fn test_builder() -> Result<()> {
     Ok(())
 }
 
-
 #[tokio::test]
-async fn echo_server()->Result<()> {
+async fn echo_server() -> Result<()> {
     struct Foo {
         serv: Arc<dyn ITCPServer<()>>,
     }
@@ -55,9 +51,7 @@ async fn echo_server()->Result<()> {
             println!("{:?} connect", addr);
             true
         })
-        .set_stream_init(async move |tcp_stream|{
-            Ok(tcp_stream)
-        })
+        .set_stream_init(async move |tcp_stream| Ok(tcp_stream))
         .set_input_event(async move |mut reader, peer, _| {
             let mut buff = [0; 4096];
             while let Ok(len) = reader.read(&mut buff).await {

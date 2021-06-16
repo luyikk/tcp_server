@@ -1,9 +1,9 @@
 #![feature(async_closure)]
 
+use anyhow::*;
 use std::sync::Arc;
 use tcpserver::{Builder, IPeer, ITCPServer};
 use tokio::io::AsyncReadExt;
-use anyhow::*;
 
 #[global_allocator]
 static MIN: mimalloc::MiMalloc = mimalloc::MiMalloc;
@@ -15,9 +15,7 @@ async fn main() -> Result<()> {
             println!("{:?} connect", addr);
             true
         })
-        .set_stream_init(async move |tcp_stream|{
-            Ok(tcp_stream)
-        })
+        .set_stream_init(async move |tcp_stream| Ok(tcp_stream))
         .set_input_event(async move |mut reader, peer, _| {
             let mut buff = [0; 4096];
             while let Ok(len) = reader.read(&mut buff).await {
