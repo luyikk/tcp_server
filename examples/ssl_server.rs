@@ -10,10 +10,6 @@ use std::pin::Pin;
 use log::LevelFilter;
 use std::time::Duration;
 use tokio::time::sleep;
-
-
-
-
 lazy_static!{
     pub static ref SSL:SslAcceptor={
 
@@ -28,10 +24,8 @@ lazy_static!{
     };
 }
 
-
 #[tokio::main]
 async fn main()->Result<()> {
-
     SSL.context();
     env_logger::Builder::new().filter_level(LevelFilter::Debug).init();
     let tcpserver: Arc<dyn ITCPServer<()>> = Builder::new("0.0.0.0:5555")
@@ -52,6 +46,7 @@ async fn main()->Result<()> {
                 if len == 0 {
                     break;
                 }
+                println!("{}",std::str::from_utf8(&buff[..len])?);
                 peer.send(b"200\r\n").await?;
             }
             println!("{:?} disconnect", peer.addr());
