@@ -112,7 +112,7 @@ impl<T> IPeer for Actor<TCPPeer<T>>
                 .await
         }
     }
-
+    #[inline]
     async fn send_all<'a>(&'a self, buff: &'a [u8]) -> Result<()> {
         ensure!(!buff.is_empty(), "send buff is null");
         unsafe {
@@ -120,7 +120,7 @@ impl<T> IPeer for Actor<TCPPeer<T>>
                 .await
         }
     }
-
+    #[inline]
     async fn flush(&mut self) -> Result<()> {
         self.inner_call(async move |inner| inner.get_mut().flush().await)
             .await
