@@ -25,7 +25,6 @@ lazy_static!{
 
 #[tokio::main]
 async fn main()->Result<()> {
-    SSL.context();
     env_logger::Builder::new().filter_level(LevelFilter::Debug).init();
     let tcpserver: Arc<dyn ITCPServer<()>> = Builder::new("0.0.0.0:5555")
         .set_connect_event(|addr| {
