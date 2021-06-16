@@ -12,7 +12,6 @@ use std::time::Duration;
 use tokio::time::sleep;
 lazy_static!{
     pub static ref SSL:SslAcceptor={
-
         let mut acceptor = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
          acceptor
             .set_private_key_file("tests/key.pem", SslFiletype::PEM)
