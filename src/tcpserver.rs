@@ -13,36 +13,37 @@ use tokio::task::JoinHandle;
 use tokio::io::{ReadHalf, AsyncRead, AsyncWrite};
 
 pub type ConnectEventType = fn(SocketAddr) -> bool;
-pub type StreamInitType<B>=fn(TcpStream)->B;
 
-pub struct TCPServer<I, R, T,B,C> {
+
+pub struct TCPServer<I, R, T,B,C,IST> {
     listener: Option<TcpListener>,
     connect_event: Option<ConnectEventType>,
-    stream_init: Arc<StreamInitType<B>>,
+    stream_init: Arc<IST>,
     input_event: Arc<I>,
     _phantom1: PhantomData<R>,
     _phantom2: PhantomData<T>,
     _phantom3: PhantomData<C>,
+    _phantom4: PhantomData<B>,
 }
 
-unsafe impl<I, R, T,B,C> Send for TCPServer<I, R, T,B,C> {}
-unsafe impl<I, R, T,B,C> Sync for TCPServer<I, R, T,B,C> {}
+unsafe impl<I, R, T,B,C,IST> Send for TCPServer<I, R, T,B,C,IST> {}
+unsafe impl<I, R, T,B,C,IST> Sync for TCPServer<I, R, T,B,C,IST> {}
 
-impl<I, R, T,B,C> TCPServer<I, R, T,B,C>
+impl<I, R, T,B,C,IST> TCPServer<I, R, T,B,C,IST>
 where
     I: Fn(ReadHalf<C>, Arc<Actor<TCPPeer<C>>>, T) -> R + Send + Sync + 'static,
     R: Future<Output = Result<()>> + Send + 'static,
     T: Clone + Send + 'static,
     B: Future<Output = Result<C>> + Send + 'static,
-    C: AsyncRead + AsyncWrite + Send +'static
-{
+    C: AsyncRead + AsyncWrite + Send +'static,
+    IST:Fn(TcpStream)->B + Send + Sync+'static{
     /// 创建一个新的TCP服务
     pub(crate) async fn new<A: ToSocketAddrs>(
         addr: A,
-        stream_init: StreamInitType<B>,
+        stream_init: IST,
         input: I,
         connect_event: Option<ConnectEventType>,
-    ) -> Result<Arc<Actor<TCPServer<I, R, T,B,C>>>, Box<dyn Error>> {
+    ) -> Result<Arc<Actor<TCPServer<I, R, T,B,C,IST>>>, Box<dyn Error>> {
         let listener = TcpListener::bind(addr).await?;
         Ok(Arc::new(Actor::new(TCPServer {
             listener: Some(listener),
@@ -51,7 +52,8 @@ where
             input_event: Arc::new(input),
             _phantom1: PhantomData::default(),
             _phantom2: PhantomData::default(),
-            _phantom3:PhantomData::default()
+            _phantom3: PhantomData::default(),
+            _phantom4: PhantomData::default()
         })))
     }
 
@@ -111,14 +113,14 @@ pub trait ITCPServer<T> {
 }
 
 #[async_trait::async_trait]
-impl<I, R, T,B,C> ITCPServer<T> for Actor<TCPServer<I, R, T,B,C>>
+impl<I, R, T,B,C,IST> ITCPServer<T> for Actor<TCPServer<I, R, T,B,C,IST>>
 where
     I: Fn(ReadHalf<C>, Arc<Actor<TCPPeer<C>>>, T) -> R + Send + Sync + 'static,
     R: Future<Output = Result<()>> + Send + 'static,
     T: Clone + Send + Sync + 'static,
     B: Future<Output = Result<C>> + Send + 'static,
-    C: AsyncRead + AsyncWrite + Send +'static
-{
+    C: AsyncRead + AsyncWrite + Send +'static,
+    IST:Fn(TcpStream)->B+Send+Sync+'static{
     async fn start(&self, token: T) -> Result<JoinHandle<Result<()>>> {
         self.inner_call(async move |inner| inner.get_mut().start(token).await)
             .await

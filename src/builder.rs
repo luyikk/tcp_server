@@ -1,33 +1,35 @@
-use crate::{ConnectEventType, TCPPeer, TCPServer, StreamInitType};
+use crate::{ConnectEventType, TCPPeer, TCPServer};
 use aqueue::Actor;
 use std::future::Future;
 use std::marker::PhantomData;
 use std::sync::Arc;
-use tokio::net::ToSocketAddrs;
+use tokio::net::{ToSocketAddrs, TcpStream};
 use tokio::io::{ReadHalf, AsyncRead, AsyncWrite};
 use anyhow::*;
 
 /// TCP server builder
-pub struct Builder<I, R, A, T,B,C> {
+pub struct Builder<I, R, A, T,B,C,IST> {
     input: Option<I>,
     connect_event: Option<ConnectEventType>,
-    stream_init:Option<StreamInitType<B>>,
+    stream_init:Option<IST>,
     addr: A,
     _phantom1: PhantomData<R>,
     _phantom2: PhantomData<T>,
     _phantom3: PhantomData<C>,
+    _phantom4: PhantomData<B>
 }
 
-impl<I, R, A, T, B,C> Builder<I, R, A, T, B,C>
+impl<I, R, A, T, B,C,IST> Builder<I, R, A, T, B,C,IST>
 where
     I: Fn(ReadHalf<C>, Arc<Actor<TCPPeer<C>>>, T) -> R + Send + Sync + 'static,
     R: Future<Output = Result<()>> + Send + 'static,
     A: ToSocketAddrs,
     T: Clone + Send + 'static,
     B: Future<Output = Result<C>> + Send + 'static,
-    C: AsyncRead + AsyncWrite + Send +'static
+    C: AsyncRead + AsyncWrite + Send +'static,
+    IST:Fn(TcpStream)->B + Send + Sync +'static
 {
-    pub fn new(addr: A) -> Builder<I, R, A, T,B,C> {
+    pub fn new(addr: A) -> Builder<I, R, A, T,B,C,IST> {
         Builder {
             input: None,
             connect_event: None,
@@ -35,7 +37,8 @@ where
             addr,
             _phantom1: PhantomData::default(),
             _phantom2: PhantomData::default(),
-            _phantom3: PhantomData::default()
+            _phantom3: PhantomData::default(),
+            _phantom4: PhantomData::default()
         }
     }
 
@@ -52,13 +55,13 @@ where
     }
 
     /// 设置输入流类型,例如TCPStream,SSLStream or GZIPStream
-    pub fn set_stream_init(mut self,c:StreamInitType<B>)->Self{
+    pub fn set_stream_init(mut self,c:IST)->Self{
         self.stream_init=Some(c);
         self
     }
 
     /// 生成TCPSERVER,如果没有设置 tcp input 将报错
-    pub async fn build(mut self) -> Arc<Actor<TCPServer<I, R, T,B,C>>> {
+    pub async fn build(mut self) -> Arc<Actor<TCPServer<I, R, T,B,C,IST>>> {
         if let Some(input) = self.input.take() {
             if let Some(stream_init)=self.stream_init.take() {
                 return if let Some(connect) = self.connect_event.take() {
