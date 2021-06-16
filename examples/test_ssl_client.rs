@@ -14,7 +14,7 @@ async fn main()->Result<()> {
         .configure()?
         .into_ssl("localhost")?;
 
-    let stream = TcpStream::connect("127.0.0.1:5555").await.unwrap();
+    let stream = TcpStream::connect("127.0.0.1:1002").await.unwrap();
     let mut stream = SslStream::new(ssl, stream).unwrap();
     Pin::new(&mut stream).connect().await.unwrap();
     stream.write_all(b"asdf\r\n").await.unwrap();
