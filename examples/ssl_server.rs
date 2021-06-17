@@ -10,9 +10,10 @@ use tcpserver::{Builder, IPeer, ITCPServer};
 use tokio::io::AsyncReadExt;
 use tokio::time::sleep;
 use tokio_openssl::SslStream;
+
 lazy_static! {
     pub static ref SSL: SslAcceptor = {
-        let mut acceptor = SslAcceptor::mozilla_intermediate(SslMethod::tls_server()).unwrap();
+        let mut acceptor = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
         acceptor.set_ca_file("tests/ca-cert.pem").unwrap();
         acceptor
             .set_private_key_file("tests/server-key.pem", SslFiletype::PEM)
@@ -23,16 +24,9 @@ lazy_static! {
         acceptor.set_verify_callback(SslVerifyMode::PEER|SslVerifyMode::FAIL_IF_NO_PEER_CERT,|ok,cert|{
             println!("pre verify ok {}",ok);
             if !ok{
-                match cert.verify_cert(){
-                    Ok(v)=>{
-                        println!("verify {}",v)
-                    },
-                    Err(_)=>{
-                        if let Some(cert)= cert.current_cert(){
-                           println!("subject info {:?}",cert.subject_name());
-                           println!("issuer info {:?}",cert.issuer_name());
-                        }
-                    }
+                if let Some(cert)= cert.current_cert(){
+                   println!("subject info {:?}",cert.subject_name());
+                   println!("issuer info {:?}",cert.issuer_name());
                 }
             }
             true
@@ -44,6 +38,7 @@ lazy_static! {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // TLS TEST SERVER
     env_logger::Builder::new()
         .filter_level(LevelFilter::Debug)
         .init();
@@ -73,7 +68,6 @@ async fn main() -> Result<()> {
         })
         .build()
         .await;
-
     tcpserver.start_block(()).await?;
     Ok(())
 }
