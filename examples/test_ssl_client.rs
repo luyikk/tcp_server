@@ -15,7 +15,7 @@ async fn main() -> Result<()> {
         tcpclient::TcpClient::connect_stream_type("127.0.0.1:5555",
             async move|tcp_stream|{
                 let mut connector = SslConnector::builder(SslMethod::tls())?;
-                connector.set_ca_file("tests/server-cert.pem")?;
+                connector.set_ca_file("tests/chain.cert.pem")?;
                 connector.set_private_key_file("tests/client-key.pem", SslFiletype::PEM)?;
                 connector.set_certificate_chain_file("tests/client-cert.pem")?;
                 connector.check_private_key()?;

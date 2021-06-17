@@ -14,7 +14,7 @@ use tokio_openssl::SslStream;
 lazy_static! {
     pub static ref SSL: SslAcceptor = {
         let mut acceptor = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
-        acceptor.set_ca_file("tests/ca-cert.pem").unwrap();
+        acceptor.set_ca_file("tests/chain.cert.pem").unwrap();
         acceptor
             .set_private_key_file("tests/server-key.pem", SslFiletype::PEM)
             .unwrap();
@@ -22,14 +22,13 @@ lazy_static! {
             .set_certificate_chain_file("tests/server-cert.pem")
             .unwrap();
         acceptor.set_verify_callback(SslVerifyMode::PEER|SslVerifyMode::FAIL_IF_NO_PEER_CERT,|ok,cert|{
-            println!("pre verify ok {}",ok);
             if !ok{
                 if let Some(cert)= cert.current_cert(){
                    println!("subject info {:?}",cert.subject_name());
                    println!("issuer info {:?}",cert.issuer_name());
                 }
             }
-            true
+            ok
         });
         acceptor.check_private_key().unwrap();
         acceptor.build()
@@ -38,6 +37,7 @@ lazy_static! {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+
     // TLS TEST SERVER
     env_logger::Builder::new()
         .filter_level(LevelFilter::Debug)
