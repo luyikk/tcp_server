@@ -1,6 +1,6 @@
 #![feature(async_closure)]
 use anyhow::*;
-use openssl::ssl::{SslConnector, SslMethod, SslFiletype};
+use openssl::ssl::{SslConnector, SslMethod, SslFiletype, SslVerifyMode};
 use std::pin::Pin;
 use tokio::io::{AsyncReadExt};
 use tokio_openssl::SslStream;
@@ -19,6 +19,7 @@ async fn main() -> Result<()> {
                 connector.set_private_key_file("tests/client-key.pem", SslFiletype::PEM)?;
                 connector.set_certificate_chain_file("tests/client-cert.pem")?;
                 connector.check_private_key()?;
+                connector.set_verify(SslVerifyMode::PEER|SslVerifyMode::FAIL_IF_NO_PEER_CERT);
                 let ssl = connector.build().configure()?.into_ssl("localhost")?;
                 let mut stream = SslStream::new(ssl, tcp_stream)?;
                 Pin::new(&mut stream).connect().await?;
