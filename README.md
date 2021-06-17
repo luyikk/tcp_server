@@ -3,30 +3,34 @@
 # Examples Echo
 ``` rust
 #![feature(async_closure)]
-use tcpserver::tokio;
+use anyhow::*;
+use std::sync::Arc;
+use tcpserver::{Builder, IPeer, ITCPServer};
 use tokio::io::AsyncReadExt;
-use tcpserver::XBWrite;
-use tcpserver::Builder;
 
 #[tokio::main]
-async fn main()->Result<(),Box<dyn Error>> {
-    let tcpserver = Builder::new("0.0.0.0:8998")
+async fn main() -> Result<()> {
+    let tcpserver: Arc<dyn ITCPServer<()>> = Builder::new("0.0.0.0:5555")
         .set_connect_event(|addr| {
             println!("{:?} connect", addr);
             true
-        }).set_input_event(async move |mut reader, peer,_| {
-        let mut buff = [0; 4096];
-        while let Ok(len) = reader.read(&mut buff).await  {
-            if len==0{
-                break;
+        })
+        .set_stream_init(async move |tcp_stream| Ok(tcp_stream))
+        .set_input_event(async move |mut reader, peer, _token| {
+            let mut buff = [0; 4096];
+            while let Ok(len) = reader.read(&mut buff).await {
+                if len == 0 {
+                    break;
+                }
+                peer.send(&buff[..len]).await?;
             }
-            println!("{:?}",&buff[..len]);
-            peer.send(buff[..len].to_vec()).await.unwrap();
-        }
-        println!("{:?} disconnect",peer.addr());
-    }).build().await;
-
-    tcpserver.start(()).await?;
+            println!("{:?} disconnect", peer.addr());
+            Ok(())
+        })
+        .build()
+        .await;
+    tcpserver.start_block(()).await?;
     Ok(())
 }
+
 ```

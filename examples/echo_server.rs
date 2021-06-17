@@ -1,12 +1,8 @@
 #![feature(async_closure)]
-
 use anyhow::*;
 use std::sync::Arc;
 use tcpserver::{Builder, IPeer, ITCPServer};
 use tokio::io::AsyncReadExt;
-
-#[global_allocator]
-static MIN: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -16,7 +12,7 @@ async fn main() -> Result<()> {
             true
         })
         .set_stream_init(async move |tcp_stream| Ok(tcp_stream))
-        .set_input_event(async move |mut reader, peer, _| {
+        .set_input_event(async move |mut reader, peer, _token| {
             let mut buff = [0; 4096];
             while let Ok(len) = reader.read(&mut buff).await {
                 if len == 0 {
@@ -29,7 +25,6 @@ async fn main() -> Result<()> {
         })
         .build()
         .await;
-
     tcpserver.start_block(()).await?;
     Ok(())
 }
