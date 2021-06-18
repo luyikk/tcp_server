@@ -1,6 +1,6 @@
 #![feature(async_closure)]
 use anyhow::*;
-use openssl::ssl::{SslConnector, SslMethod, SslFiletype, SslVerifyMode};
+use openssl::ssl::{SslConnector, SslMethod, SslFiletype};
 use std::pin::Pin;
 use tokio::io::{AsyncReadExt};
 use tokio_openssl::SslStream;
