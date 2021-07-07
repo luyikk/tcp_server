@@ -61,7 +61,7 @@ async fn main() -> Result<()> {
                     break;
                 }
                 println!("{}", std::str::from_utf8(&buff[..len])?);
-                peer.send(b"200\r\n").await?;
+                peer.send(b"200\r\n".to_vec()).await?;
             }
             println!("{:?} disconnect", peer.addr());
             Ok(())
