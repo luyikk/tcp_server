@@ -78,6 +78,8 @@ pub trait IPeer: Sync + Send {
     async fn is_disconnect(&self) -> Result<bool>;
     async fn send<B: Deref<Target = [u8]> + Send + Sync + 'static>(&self, buff: B) -> Result<usize>;
     async fn send_all<B: Deref<Target = [u8]> + Send + Sync + 'static>(&self, buff: B) -> Result<()>;
+    async fn send_ref<'a>(&'a self, buff: &'a [u8]) -> Result<usize>;
+    async fn send_all_ref<'a>(&'a self, buff: &'a [u8]) -> Result<()>;
     async fn flush(&mut self) -> Result<()>;
     async fn disconnect(&self) -> Result<()>;
 }
@@ -111,6 +113,23 @@ where
         self.inner_call(async move |inner| inner.get_mut().send_all(&buff).await)
             .await
     }
+
+    async fn send_ref<'a>(&'a self, buff: &'a [u8]) -> Result<usize> {
+        ensure!(!buff.is_empty(), "send buff is null");
+        unsafe {
+            self.inner_call_ref(async move |inner| inner.get_mut().send(buff).await)
+                .await
+        }
+    }
+
+    async fn send_all_ref<'a>(&'a self, buff: &'a [u8]) -> Result<()> {
+        ensure!(!buff.is_empty(), "send buff is null");
+        unsafe {
+            self.inner_call_ref(async move |inner| inner.get_mut().send_all(buff).await)
+                .await
+        }
+    }
+
     #[inline]
     async fn flush(&mut self) -> Result<()> {
         self.inner_call(async move |inner| inner.get_mut().flush().await)
