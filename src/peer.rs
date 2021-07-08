@@ -113,7 +113,7 @@ where
         self.inner_call(async move |inner| inner.get_mut().send_all(&buff).await)
             .await
     }
-
+    #[inline]
     async fn send_ref<'a>(&'a self, buff: &'a [u8]) -> Result<usize> {
         ensure!(!buff.is_empty(), "send buff is null");
         unsafe {
@@ -121,7 +121,7 @@ where
                 .await
         }
     }
-
+    #[inline]
     async fn send_all_ref<'a>(&'a self, buff: &'a [u8]) -> Result<()> {
         ensure!(!buff.is_empty(), "send buff is null");
         unsafe {
