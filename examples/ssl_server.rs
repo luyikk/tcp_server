@@ -1,5 +1,5 @@
 #![feature(async_closure)]
-use anyhow::*;
+use anyhow::Result;
 use lazy_static::lazy_static;
 use log::LevelFilter;
 use openssl::ssl::{Ssl, SslAcceptor, SslFiletype, SslMethod, SslVerifyMode};

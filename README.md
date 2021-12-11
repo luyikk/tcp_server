@@ -5,7 +5,7 @@
 # Examples Echo
 ``` rust
 #![feature(async_closure)]
-use anyhow::*;
+use anyhow::Result;
 use std::sync::Arc;
 use tcpserver::{Builder, IPeer, ITCPServer};
 use tokio::io::AsyncReadExt;

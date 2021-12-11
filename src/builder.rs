@@ -1,5 +1,5 @@
 use crate::{ConnectEventType, TCPPeer, TCPServer};
-use anyhow::*;
+use anyhow::Result;
 use aqueue::Actor;
 use std::future::Future;
 use std::marker::PhantomData;

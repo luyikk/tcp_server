@@ -1,5 +1,5 @@
 #![feature(async_closure)]
-use anyhow::*;
+use anyhow::{anyhow, Result};
 use openssl::ssl::{SslConnector, SslMethod, SslFiletype};
 use std::pin::Pin;
 use tokio::io::{AsyncReadExt};

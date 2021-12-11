@@ -1,6 +1,6 @@
 use crate::peer::TCPPeer;
 use crate::IPeer;
-use anyhow::*;
+use anyhow::{bail, Result};
 use aqueue::Actor;
 use log::*;
 use std::error::Error;
