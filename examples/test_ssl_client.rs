@@ -32,7 +32,7 @@ async fn main() -> Result<()> {
                 Ok(true)
             },tx).await?;
 
-    client.send_all(b"hello world\r\n").await?;
+    client.send_all_ref(b"hello world\r\n").await?;
     rx.await?;
     println!("finish");
     Ok(())
