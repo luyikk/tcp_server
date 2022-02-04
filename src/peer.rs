@@ -80,7 +80,7 @@ pub trait IPeer: Sync + Send {
     async fn send_all<B: Deref<Target = [u8]> + Send + Sync + 'static>(&self, buff: B) -> Result<()>;
     async fn send_ref<'a>(&'a self, buff: &'a [u8]) -> Result<usize>;
     async fn send_all_ref<'a>(&'a self, buff: &'a [u8]) -> Result<()>;
-    async fn flush(&mut self) -> Result<()>;
+    async fn flush(&self) -> Result<()>;
     async fn disconnect(&self) -> Result<()>;
 }
 
@@ -131,7 +131,7 @@ where
     }
 
     #[inline]
-    async fn flush(&mut self) -> Result<()> {
+    async fn flush(&self) -> Result<()> {
         self.inner_call(async move |inner| inner.get_mut().flush().await)
             .await
     }
