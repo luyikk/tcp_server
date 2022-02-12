@@ -1,4 +1,3 @@
-#![feature(async_closure)]
 use anyhow::{anyhow, Result};
 use openssl::ssl::{SslConnector, SslMethod, SslFiletype};
 use std::pin::Pin;
@@ -13,7 +12,7 @@ async fn main() -> Result<()> {
     let (tx,rx)=channel();
     let client=
         tcpclient::TcpClient::connect_stream_type("127.0.0.1:5555",
-            async move|tcp_stream|{
+                                                  |tcp_stream|async move{
                 let mut connector = SslConnector::builder(SslMethod::tls())?;
                 connector.set_ca_file("tests/chain.cert.pem")?;
                 connector.set_private_key_file("tests/client-key.pem", SslFiletype::PEM)?;
@@ -24,7 +23,7 @@ async fn main() -> Result<()> {
                 Pin::new(&mut stream).connect().await?;
                 Ok(stream)
             },
-            async move|tx,_client,mut stream|{
+                                                  |tx,_client,mut stream| async move{
                 let mut buf = [0; 5];
                 stream.read_exact(&mut buf).await?;
                 assert_eq!(&buf, b"200\r\n");

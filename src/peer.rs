@@ -96,7 +96,7 @@ where
 
     #[inline]
     async fn is_disconnect(&self) -> Result<bool> {
-        self.inner_call(async move |inner| Ok(inner.get().is_disconnect()))
+        self.inner_call(|inner|async move { Ok(inner.get().is_disconnect())})
             .await
     }
 
@@ -104,20 +104,20 @@ where
     async fn send<B: Deref<Target = [u8]> + Send + Sync + 'static>(&self, buff: B) -> Result<usize> {
         ensure!(!buff.is_empty(), "send buff is null");
 
-        self.inner_call(async move |inner| inner.get_mut().send(&buff).await)
+        self.inner_call(|inner| async move{inner.get_mut().send(&buff).await})
             .await
     }
     #[inline]
     async fn send_all<B: Deref<Target = [u8]> + Send + Sync + 'static>(&self, buff: B) -> Result<()>{
         ensure!(!buff.is_empty(), "send buff is null");
-        self.inner_call(async move |inner| inner.get_mut().send_all(&buff).await)
+        self.inner_call(|inner|async move {inner.get_mut().send_all(&buff).await})
             .await
     }
     #[inline]
     async fn send_ref<'a>(&'a self, buff: &'a [u8]) -> Result<usize> {
         ensure!(!buff.is_empty(), "send buff is null");
         unsafe {
-            self.inner_call_ref(async move |inner| inner.get_mut().send(buff).await)
+            self.inner_call_ref(|inner|async move {inner.get_mut().send(buff).await})
                 .await
         }
     }
@@ -125,20 +125,20 @@ where
     async fn send_all_ref<'a>(&'a self, buff: &'a [u8]) -> Result<()> {
         ensure!(!buff.is_empty(), "send buff is null");
         unsafe {
-            self.inner_call_ref(async move |inner| inner.get_mut().send_all(buff).await)
+            self.inner_call_ref(|inner|async move {inner.get_mut().send_all(buff).await})
                 .await
         }
     }
 
     #[inline]
     async fn flush(&mut self) -> Result<()> {
-        self.inner_call(async move |inner| inner.get_mut().flush().await)
+        self.inner_call(|inner|async move { inner.get_mut().flush().await})
             .await
     }
 
     #[inline]
     async fn disconnect(&self) -> Result<()> {
-        self.inner_call(async move |inner| inner.get_mut().disconnect().await)
+        self.inner_call(|inner|async move { inner.get_mut().disconnect().await})
             .await
     }
 }

@@ -1,4 +1,3 @@
-#![feature(async_closure)]
 use tcpclient::{TcpClient,SocketClientTrait};
 use tokio::io::AsyncReadExt;
 use std::error::Error;

@@ -1,4 +1,3 @@
-#![feature(async_closure)]
 mod builder;
 mod peer;
 mod tcpserver;

@@ -1,4 +1,3 @@
-#![feature(async_closure)]
 use anyhow::Result;
 use lazy_static::lazy_static;
 use log::LevelFilter;
@@ -47,14 +46,14 @@ async fn main() -> Result<()> {
             println!("{:?} connect", addr);
             true
         })
-        .set_stream_init(async move |tcp_stream| {
+        .set_stream_init( |tcp_stream|async move {
             let ssl = Ssl::new(SSL.context())?;
             let mut stream = SslStream::new(ssl, tcp_stream)?;
             sleep(Duration::from_millis(200)).await;
             Pin::new(&mut stream).accept().await?;
             Ok(stream)
         })
-        .set_input_event(async move |mut reader, peer, _| {
+        .set_input_event(|mut reader, peer, _| async move  {
             let mut buff = [0; 4096];
             while let Ok(len) = reader.read(&mut buff).await {
                 if len == 0 {
