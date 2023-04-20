@@ -44,6 +44,7 @@ where
     pub async fn send_all<'a>(&'a mut self, buff: &'a [u8]) -> Result<()> {
         if let Some(ref mut sender) = self.sender {
             sender.write_all(buff).await?;
+            sender.flush().await?;
             Ok(())
         } else {
             bail!("ConnectionReset")
