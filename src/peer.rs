@@ -1,10 +1,10 @@
 use anyhow::{bail, Result};
 use aqueue::Actor;
 use std::net::SocketAddr;
+use std::ops::Deref;
 use std::sync::Arc;
 use tokio::io::WriteHalf;
 use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt};
-use std::ops::Deref;
 
 pub struct TCPPeer<T> {
     pub addr: SocketAddr,
@@ -77,8 +77,12 @@ where
 pub trait IPeer: Sync + Send {
     fn addr(&self) -> SocketAddr;
     async fn is_disconnect(&self) -> Result<bool>;
-    async fn send<B: Deref<Target = [u8]> + Send + Sync + 'static>(&self, buff: B) -> Result<usize>;
-    async fn send_all<B: Deref<Target = [u8]> + Send + Sync + 'static>(&self, buff: B) -> Result<()>;
+    async fn send<B: Deref<Target = [u8]> + Send + Sync + 'static>(&self, buff: B)
+        -> Result<usize>;
+    async fn send_all<B: Deref<Target = [u8]> + Send + Sync + 'static>(
+        &self,
+        buff: B,
+    ) -> Result<()>;
     async fn send_ref(&self, buff: &[u8]) -> Result<usize>;
     async fn send_all_ref(&self, buff: &[u8]) -> Result<()>;
     async fn flush(&self) -> Result<()>;
@@ -97,18 +101,24 @@ where
 
     #[inline]
     async fn is_disconnect(&self) -> Result<bool> {
-        self.inner_call(|inner|async move { Ok(inner.get().is_disconnect())})
+        self.inner_call(|inner| async move { Ok(inner.get().is_disconnect()) })
             .await
     }
 
     #[inline]
-    async fn send<B: Deref<Target = [u8]> + Send + Sync + 'static>(&self, buff: B) -> Result<usize> {
-        self.inner_call(|inner| async move{inner.get_mut().send(&buff).await})
+    async fn send<B: Deref<Target = [u8]> + Send + Sync + 'static>(
+        &self,
+        buff: B,
+    ) -> Result<usize> {
+        self.inner_call(|inner| async move { inner.get_mut().send(&buff).await })
             .await
     }
     #[inline]
-    async fn send_all<B: Deref<Target = [u8]> + Send + Sync + 'static>(&self, buff: B) -> Result<()>{
-        self.inner_call(|inner|async move {inner.get_mut().send_all(&buff).await})
+    async fn send_all<B: Deref<Target = [u8]> + Send + Sync + 'static>(
+        &self,
+        buff: B,
+    ) -> Result<()> {
+        self.inner_call(|inner| async move { inner.get_mut().send_all(&buff).await })
             .await
     }
     #[inline]
@@ -124,13 +134,13 @@ where
 
     #[inline]
     async fn flush(&self) -> Result<()> {
-        self.inner_call(|inner|async move { inner.get_mut().flush().await})
+        self.inner_call(|inner| async move { inner.get_mut().flush().await })
             .await
     }
 
     #[inline]
     async fn disconnect(&self) -> Result<()> {
-        self.inner_call(|inner|async move { inner.get_mut().disconnect().await})
+        self.inner_call(|inner| async move { inner.get_mut().disconnect().await })
             .await
     }
 }

@@ -1,32 +1,38 @@
-use tcpclient::{TcpClient,SocketClientTrait};
-use tokio::io::AsyncReadExt;
-use std::error::Error;
 use log::LevelFilter;
+use std::error::Error;
+use tcpclient::{SocketClientTrait, TcpClient};
+use tokio::io::AsyncReadExt;
 
 #[tokio::main]
-async fn main()->Result<(),Box<dyn Error>> {
+async fn main() -> Result<(), Box<dyn Error>> {
     // set logger out
-    env_logger::Builder::new().filter_level(LevelFilter::Debug).init();
+    env_logger::Builder::new()
+        .filter_level(LevelFilter::Debug)
+        .init();
 
     // connect echo server
-    let client =
-        TcpClient::connect("127.0.0.1:5555", async move |_, client, mut reader| {
+    let client = TcpClient::connect(
+        "127.0.0.1:5555",
+        async move |_, client, mut reader| {
             // read buff from target server
-            let mut buff=[0;7];
+            let mut buff = [0; 7];
             while let Ok(len) = reader.read_exact(&mut buff).await {
                 // send buff to target server
-                println!("{}",std::str::from_utf8(&buff[..len])?);
+                println!("{}", std::str::from_utf8(&buff[..len])?);
                 client.send_ref(&buff[..len]).await?;
             }
             // return true need disconnect,false not disconnect
             // if true and the current state is disconnected, it will be ignored.
             Ok(true)
-        }, ()).await?;
+        },
+        (),
+    )
+    .await?;
 
     // connect ok send buff to target server
     client.send_ref(b"1234567").await?;
 
-    // test disconnect readline 
+    // test disconnect readline
     let mut str = "".into();
     std::io::stdin().read_line(&mut str)?;
 

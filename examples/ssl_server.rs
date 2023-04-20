@@ -20,15 +20,18 @@ lazy_static! {
         acceptor
             .set_certificate_chain_file("tests/server-cert.pem")
             .unwrap();
-        acceptor.set_verify_callback(SslVerifyMode::PEER|SslVerifyMode::FAIL_IF_NO_PEER_CERT,|ok,cert|{
-            if !ok{
-                if let Some(cert)= cert.current_cert(){
-                   println!("subject info {:?}",cert.subject_name());
-                   println!("issuer info {:?}",cert.issuer_name());
+        acceptor.set_verify_callback(
+            SslVerifyMode::PEER | SslVerifyMode::FAIL_IF_NO_PEER_CERT,
+            |ok, cert| {
+                if !ok {
+                    if let Some(cert) = cert.current_cert() {
+                        println!("subject info {:?}", cert.subject_name());
+                        println!("issuer info {:?}", cert.issuer_name());
+                    }
                 }
-            }
-            ok
-        });
+                ok
+            },
+        );
         acceptor.check_private_key().unwrap();
         acceptor.build()
     };
@@ -36,7 +39,6 @@ lazy_static! {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-
     // TLS TEST SERVER
     env_logger::Builder::new()
         .filter_level(LevelFilter::Debug)
@@ -46,14 +48,14 @@ async fn main() -> Result<()> {
             println!("{:?} connect", addr);
             true
         })
-        .set_stream_init( |tcp_stream|async move {
+        .set_stream_init(|tcp_stream| async move {
             let ssl = Ssl::new(SSL.context())?;
             let mut stream = SslStream::new(ssl, tcp_stream)?;
             sleep(Duration::from_millis(200)).await;
             Pin::new(&mut stream).accept().await?;
             Ok(stream)
         })
-        .set_input_event(|mut reader, peer, _| async move  {
+        .set_input_event(|mut reader, peer, _| async move {
             let mut buff = [0; 4096];
             while let Ok(len) = reader.read(&mut buff).await {
                 if len == 0 {

@@ -122,7 +122,7 @@ where
     IST: Fn(TcpStream) -> B + Send + Sync + 'static,
 {
     async fn start(&self, token: T) -> Result<JoinHandle<Result<()>>> {
-        self.inner_call( |inner| async move {inner.get_mut().start(token).await})
+        self.inner_call(|inner| async move { inner.get_mut().start(token).await })
             .await
     }
 
