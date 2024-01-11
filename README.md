@@ -4,7 +4,6 @@
 
 # Examples Echo
 ``` rust
-#![feature(async_closure)]
 use anyhow::Result;
 use std::sync::Arc;
 use tcpserver::{Builder, IPeer, ITCPServer};
@@ -17,8 +16,8 @@ async fn main() -> Result<()> {
             println!("{:?} connect", addr);
             true
         })
-        .set_stream_init(async move |tcp_stream| Ok(tcp_stream))
-        .set_input_event(async move |mut reader, peer, _token| {
+        .set_stream_init(|tcp_stream| async move { Ok(tcp_stream) })
+        .set_input_event(|mut reader, peer, _token| async move  {
             let mut buff = [0; 4096];
             while let Ok(len) = reader.read(&mut buff).await {
                 if len == 0 {
