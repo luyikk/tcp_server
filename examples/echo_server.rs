@@ -11,7 +11,7 @@ async fn main() -> Result<()> {
             true
         })
         .set_stream_init(|tcp_stream| async move { Ok(tcp_stream) })
-        .set_input_event(|mut reader, peer, _token| async move {
+        .set_input_event(|mut reader, peer, _| async move {
             let mut buff = [0; 4096];
             while let Ok(len) = reader.read(&mut buff).await {
                 if len == 0 {
