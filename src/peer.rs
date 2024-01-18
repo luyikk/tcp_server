@@ -73,23 +73,23 @@ where
     }
 }
 
-#[async_trait::async_trait]
 pub trait IPeer: Sync + Send {
     fn addr(&self) -> SocketAddr;
-    async fn is_disconnect(&self) -> Result<bool>;
-    async fn send<B: Deref<Target = [u8]> + Send + Sync + 'static>(&self, buff: B)
-        -> Result<usize>;
-    async fn send_all<B: Deref<Target = [u8]> + Send + Sync + 'static>(
+    fn is_disconnect(&self) -> impl std::future::Future<Output = Result<bool>>;
+    fn send<B: Deref<Target = [u8]> + Send + Sync + 'static>(
         &self,
         buff: B,
-    ) -> Result<()>;
-    async fn send_ref(&self, buff: &[u8]) -> Result<usize>;
-    async fn send_all_ref(&self, buff: &[u8]) -> Result<()>;
-    async fn flush(&self) -> Result<()>;
-    async fn disconnect(&self) -> Result<()>;
+    ) -> impl std::future::Future<Output = Result<usize>>;
+    fn send_all<B: Deref<Target = [u8]> + Send + Sync + 'static>(
+        &self,
+        buff: B,
+    ) -> impl std::future::Future<Output = Result<()>>;
+    fn send_ref(&self, buff: &[u8]) -> impl std::future::Future<Output = Result<usize>>;
+    fn send_all_ref(&self, buff: &[u8]) -> impl std::future::Future<Output = Result<()>>;
+    fn flush(&self) -> impl std::future::Future<Output = Result<()>>;
+    fn disconnect(&self) -> impl std::future::Future<Output = Result<()>>;
 }
 
-#[async_trait::async_trait]
 impl<T> IPeer for Actor<TCPPeer<T>>
 where
     T: AsyncRead + AsyncWrite + Send + 'static,

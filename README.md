@@ -1,5 +1,7 @@
 #rust tcp server frame.
 
+* Version 2.+ Minimum supported Rust version: 1.75 or later
+
 ## [client crate url][https://crates.io/crates/tcpclient]
 
 # Examples Echo

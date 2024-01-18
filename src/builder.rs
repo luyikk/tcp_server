@@ -35,10 +35,10 @@ where
             connect_event: None,
             stream_init: None,
             addr,
-            _phantom1: PhantomData::default(),
-            _phantom2: PhantomData::default(),
-            _phantom3: PhantomData::default(),
-            _phantom4: PhantomData::default(),
+            _phantom1: Default::default(),
+            _phantom2: Default::default(),
+            _phantom3: Default::default(),
+            _phantom4: Default::default(),
         }
     }
 

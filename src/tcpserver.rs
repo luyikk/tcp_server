@@ -50,10 +50,10 @@ where
             connect_event,
             stream_init: Arc::new(stream_init),
             input_event: Arc::new(input),
-            _phantom1: PhantomData::default(),
-            _phantom2: PhantomData::default(),
-            _phantom3: PhantomData::default(),
-            _phantom4: PhantomData::default(),
+            _phantom1: Default::default(),
+            _phantom2: Default::default(),
+            _phantom3: Default::default(),
+            _phantom4: Default::default(),
         })))
     }
 
