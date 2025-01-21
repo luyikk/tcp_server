@@ -1,5 +1,6 @@
-use anyhow::{bail, Result};
+use crate::error::Result;
 use aqueue::Actor;
+use std::io::ErrorKind;
 use std::net::SocketAddr;
 use std::ops::Deref;
 use std::sync::Arc;
@@ -35,7 +36,7 @@ where
         if let Some(ref mut sender) = self.sender {
             Ok(sender.write(buff).await?)
         } else {
-            bail!("ConnectionReset")
+            Err(std::io::Error::from(ErrorKind::ConnectionReset).into())
         }
     }
 
@@ -47,7 +48,7 @@ where
             sender.flush().await?;
             Ok(())
         } else {
-            bail!("ConnectionReset")
+            Err(std::io::Error::from(ErrorKind::ConnectionReset).into())
         }
     }
 
@@ -58,7 +59,7 @@ where
             sender.flush().await?;
             Ok(())
         } else {
-            bail!("ConnectionReset")
+            Err(std::io::Error::from(ErrorKind::ConnectionReset).into())
         }
     }
 

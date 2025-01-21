@@ -1,6 +1,6 @@
+use crate::error::Result;
 use crate::peer::TCPPeer;
 use crate::IPeer;
-use anyhow::{bail, Result};
 use aqueue::Actor;
 use log::*;
 use std::error::Error;
@@ -31,9 +31,9 @@ unsafe impl<I, R, T, B, C, IST> Sync for TCPServer<I, R, T, B, C, IST> {}
 impl<I, R, T, B, C, IST> TCPServer<I, R, T, B, C, IST>
 where
     I: Fn(ReadHalf<C>, Arc<Actor<TCPPeer<C>>>, T) -> R + Send + Sync + 'static,
-    R: Future<Output = Result<()>> + Send + 'static,
+    R: Future<Output = anyhow::Result<()>> + Send + 'static,
     T: Clone + Send + 'static,
-    B: Future<Output = Result<C>> + Send + 'static,
+    B: Future<Output = anyhow::Result<C>> + Send + 'static,
     C: AsyncRead + AsyncWrite + Send + 'static,
     IST: Fn(TcpStream) -> B + Send + Sync + 'static,
 {
@@ -98,10 +98,10 @@ where
                 }
             });
 
-            return Ok(join);
+            Ok(join)
+        } else {
+            Err(crate::error::Error::NotListenerError)
         }
-
-        bail!("not listener or repeat start")
     }
 }
 
@@ -115,9 +115,9 @@ pub trait ITCPServer<T> {
 impl<I, R, T, B, C, IST> ITCPServer<T> for Actor<TCPServer<I, R, T, B, C, IST>>
 where
     I: Fn(ReadHalf<C>, Arc<Actor<TCPPeer<C>>>, T) -> R + Send + Sync + 'static,
-    R: Future<Output = Result<()>> + Send + 'static,
+    R: Future<Output = anyhow::Result<()>> + Send + 'static,
     T: Clone + Send + Sync + 'static,
-    B: Future<Output = Result<C>> + Send + 'static,
+    B: Future<Output = anyhow::Result<C>> + Send + 'static,
     C: AsyncRead + AsyncWrite + Send + 'static,
     IST: Fn(TcpStream) -> B + Send + Sync + 'static,
 {

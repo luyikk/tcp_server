@@ -1,5 +1,3 @@
-#![feature(async_closure)]
-
 use anyhow::Result;
 use std::sync::Arc;
 use tcpserver::{Builder, IPeer, ITCPServer};
@@ -12,8 +10,8 @@ async fn test_builder() -> Result<()> {
             println!("{:?} connect", addr);
             true
         })
-        .set_stream_init(async move |tcp_stream| Ok(tcp_stream))
-        .set_input_event(async move |mut reader, peer, _| {
+        .set_stream_init(|tcp_stream| async move { Ok(tcp_stream) })
+        .set_input_event(|mut reader, peer, _| async move {
             let mut buff = [0; 4096];
             while let Ok(len) = reader.read(&mut buff).await {
                 if len == 0 {
@@ -43,7 +41,7 @@ async fn echo_server() -> Result<()> {
 
     impl Foo {
         pub async fn start(&self) -> Result<()> {
-            self.serv.start_block(()).await
+            Ok(self.serv.start_block(()).await?)
         }
     }
     let tcpserver: Arc<dyn ITCPServer<()>> = Builder::new("0.0.0.0:5555")
