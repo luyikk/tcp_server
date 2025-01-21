@@ -58,12 +58,12 @@ where
     }
 
     /// 启动TCP服务
-    pub async fn start(&mut self, token: T) -> Result<JoinHandle<Result<()>>> {
+    pub async fn start(&mut self, token: T) -> Result<JoinHandle<anyhow::Result<()>>> {
         if let Some(listener) = self.listener.take() {
             let connect_event = self.connect_event.take();
             let input_event = self.input_event.clone();
             let stream_init = self.stream_init.clone();
-            let join: JoinHandle<Result<()>> = tokio::spawn(async move {
+            let join: JoinHandle<anyhow::Result<()>> = tokio::spawn(async move {
                 loop {
                     let (socket, addr) = listener.accept().await?;
                     if let Some(ref connect_event) = connect_event {
@@ -107,8 +107,8 @@ where
 
 #[async_trait::async_trait]
 pub trait ITCPServer<T> {
-    async fn start(&self, token: T) -> Result<JoinHandle<Result<()>>>;
-    async fn start_block(&self, token: T) -> Result<()>;
+    async fn start(&self, token: T) -> anyhow::Result<JoinHandle<anyhow::Result<()>>>;
+    async fn start_block(&self, token: T) -> anyhow::Result<()>;
 }
 
 #[async_trait::async_trait]
@@ -121,12 +121,12 @@ where
     C: AsyncRead + AsyncWrite + Send + 'static,
     IST: Fn(TcpStream) -> B + Send + Sync + 'static,
 {
-    async fn start(&self, token: T) -> Result<JoinHandle<Result<()>>> {
-        self.inner_call(|inner| async move { inner.get_mut().start(token).await })
+    async fn start(&self, token: T) -> anyhow::Result<JoinHandle<anyhow::Result<()>>> {
+        self.inner_call(|inner| async move { Ok(inner.get_mut().start(token).await?) })
             .await
     }
 
-    async fn start_block(&self, token: T) -> Result<()> {
+    async fn start_block(&self, token: T) -> anyhow::Result<()> {
         Self::start(self, token).await?.await??;
         Ok(())
     }
