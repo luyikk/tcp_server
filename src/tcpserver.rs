@@ -57,6 +57,27 @@ where
         })))
     }
 
+    pub(crate) async fn from_std(
+        listener: std::net::TcpListener,
+        stream_init: IST,
+        input: I,
+        connect_event: Option<ConnectEventType>,
+    ) -> Result<Arc<Actor<TCPServer<I, R, T, B, C, IST>>>, Box<dyn Error>> {
+        listener.set_nonblocking(true)?;
+        let listener = TcpListener::from_std(listener)?;
+
+        Ok(Arc::new(Actor::new(TCPServer {
+            listener: Some(listener),
+            connect_event,
+            stream_init: Arc::new(stream_init),
+            input_event: Arc::new(input),
+            _phantom1: Default::default(),
+            _phantom2: Default::default(),
+            _phantom3: Default::default(),
+            _phantom4: Default::default(),
+        })))
+    }
+
     /// 启动TCP服务
     pub async fn start(&mut self, token: T) -> Result<JoinHandle<anyhow::Result<()>>> {
         if let Some(listener) = self.listener.take() {

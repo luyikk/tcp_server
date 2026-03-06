@@ -1,6 +1,6 @@
 [package]
 name = "tcpserver"
-version = "2.2.0"
+version = "2.2.1"
 authors = ["yi lu <luyikk@126.com>"]
 edition = "2018"
 license = "MIT/Apache-2.0"
@@ -30,3 +30,4 @@ tokio = { version = "1", features = ["full"] }
 lazy_static="1.4"
 env_logger = "0.11"
 tcpclient = "2"
+socket2 = "0.6"
