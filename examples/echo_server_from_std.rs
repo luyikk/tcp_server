@@ -9,7 +9,7 @@ use tokio::io::AsyncReadExt;
 async fn main() -> Result<()> {
     let listener = socket2::Socket::new(Domain::IPV4, Type::STREAM, None)?;
     listener.set_reuse_address(true)?;
-    let address: SocketAddr = "0.0.0.0:5555".parse().unwrap();
+    let address: SocketAddr = "0.0.0.0:5555".parse()?;
     listener.bind(&address.into())?;
     listener.listen(128)?;
 
