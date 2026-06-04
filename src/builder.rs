@@ -42,24 +42,33 @@ where
         }
     }
 
+    /// Set the input event handler — called for each connection to read and respond.
+    ///
     /// 设置TCP server 输入事件
     pub fn set_input_event(mut self, f: I) -> Self {
         self.input = Some(f);
         self
     }
 
+    /// Set the connect event filter — return `false` to reject a connection.
+    ///
     /// 设置TCP server 连接事件
     pub fn set_connect_event(mut self, c: ConnectEventType) -> Self {
         self.connect_event = Some(c);
         self
     }
 
+    /// Set the stream initializer — transforms a raw TcpStream (e.g. into SslStream).
+    /// Examples: TcpStream (passthrough), SslStream, or GZIPStream.
+    ///
     /// 设置输入流类型,例如TCPStream,SSLStream or GZIPStream
     pub fn set_stream_init(mut self, c: IST) -> Self {
         self.stream_init = Some(c);
         self
     }
 
+    /// Build the TCPServer. Panics if `set_input_event` or `set_stream_init` was not called.
+    ///
     /// 生成TCPSERVER,如果没有设置 tcp input 将报错
     pub async fn build(mut self) -> Arc<Actor<TCPServer<I, R, T, B, C, IST>>> {
         if let Some(input) = self.input.take() {

@@ -16,6 +16,8 @@ impl<T> TCPPeer<T>
 where
     T: AsyncRead + AsyncWrite + Send + 'static,
 {
+    /// Create a new TCP peer wrapped in an Actor.
+    ///
     /// 创建一个TCP PEER
     #[inline]
     pub fn new(addr: SocketAddr, sender: WriteHalf<T>) -> Arc<Actor<TCPPeer<T>>> {
@@ -24,12 +26,16 @@ where
             sender: Some(sender),
         }))
     }
+    /// Check whether the peer has been disconnected.
+    ///
     /// 是否断线
     #[inline]
     pub fn is_disconnect(&self) -> bool {
         self.sender.is_none()
     }
 
+    /// Send data to the peer. Returns the number of bytes written.
+    ///
     /// 发送
     #[inline]
     pub async fn send<'a>(&'a mut self, buff: &'a [u8]) -> Result<usize> {
@@ -40,6 +46,8 @@ where
         }
     }
 
+    /// Send all data to the peer, then flush.
+    ///
     /// 发送全部
     #[inline]
     pub async fn send_all<'a>(&'a mut self, buff: &'a [u8]) -> Result<()> {
@@ -52,6 +60,8 @@ where
         }
     }
 
+    /// Flush the write buffer.
+    ///
     /// flush
     #[inline]
     pub async fn flush(&mut self) -> Result<()> {
@@ -63,6 +73,8 @@ where
         }
     }
 
+    /// Disconnect the peer by shutting down the write half.
+    ///
     /// 掐线
     #[inline]
     pub async fn disconnect(&mut self) -> Result<()> {

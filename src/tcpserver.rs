@@ -37,6 +37,8 @@ where
     C: AsyncRead + AsyncWrite + Send + 'static,
     IST: Fn(TcpStream) -> B + Send + Sync + 'static,
 {
+    /// Create a new TCP server.
+    ///
     /// 创建一个新的TCP服务
     pub(crate) async fn new<A: ToSocketAddrs>(
         addr: A,
@@ -78,6 +80,8 @@ where
         })))
     }
 
+    /// Start the TCP server — spawns an accept loop and returns a JoinHandle.
+    ///
     /// 启动TCP服务
     pub async fn start(&mut self, token: T) -> Result<JoinHandle<anyhow::Result<()>>> {
         if let Some(listener) = self.listener.take() {
