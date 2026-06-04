@@ -13,6 +13,8 @@ pub struct FromStdBuilder<I, R, T, B, C, IST> {
     connect_event: Option<ConnectEventType>,
     stream_init: Option<IST>,
     listener: std::net::TcpListener,
+    nodelay: bool,
+    max_connections: usize,
     _phantom1: PhantomData<R>,
     _phantom2: PhantomData<T>,
     _phantom3: PhantomData<C>,
@@ -34,6 +36,8 @@ where
             connect_event: None,
             stream_init: None,
             listener,
+            nodelay: false,
+            max_connections: 0,
             _phantom1: Default::default(),
             _phantom2: Default::default(),
             _phantom3: Default::default(),
@@ -66,6 +70,22 @@ where
         self
     }
 
+    /// Enable or disable TCP_NODELAY (Nagle's algorithm).
+    /// When enabled, small packets are sent immediately without delay.
+    /// Default: `false` (Nagle's algorithm enabled).
+    pub fn set_nodelay(mut self, nodelay: bool) -> Self {
+        self.nodelay = nodelay;
+        self
+    }
+
+    /// Set the maximum number of concurrent connections.
+    /// When the limit is reached, `accept` will block until a slot is freed.
+    /// Set to `0` (default) for unlimited connections.
+    pub fn set_max_connections(mut self, max: usize) -> Self {
+        self.max_connections = max;
+        self
+    }
+
     /// Build the TCPServer from a std listener. Panics if `set_input_event` or `set_stream_init` was not called.
     ///
     /// 生成TCPSERVER,如果没有设置 tcp input 将报错
@@ -79,8 +99,15 @@ where
             panic!("stream_init is no settings,please use set_stream_init function.")
         });
         let connect = self.connect_event.take();
-        TCPServer::from_std(self.listener, stream_init, input, connect)
-            .await
-            .unwrap()
+        TCPServer::from_std(
+            self.listener,
+            stream_init,
+            input,
+            connect,
+            self.nodelay,
+            self.max_connections,
+        )
+        .await
+        .unwrap()
     }
 }

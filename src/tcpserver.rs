@@ -10,6 +10,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::io::{AsyncRead, AsyncWrite, ReadHalf};
 use tokio::net::{TcpListener, TcpStream, ToSocketAddrs};
+use tokio::sync::Semaphore;
 use tokio::task::JoinHandle;
 
 pub type ConnectEventType = fn(SocketAddr) -> bool;
@@ -19,6 +20,8 @@ pub struct TCPServer<I, R, T, B, C, IST> {
     connect_event: Option<ConnectEventType>,
     stream_init: Arc<IST>,
     input_event: Arc<I>,
+    nodelay: bool,
+    max_connections: usize,
     _phantom1: PhantomData<R>,
     _phantom2: PhantomData<T>,
     _phantom3: PhantomData<C>,
@@ -42,12 +45,16 @@ where
         connect_event: Option<ConnectEventType>,
         stream_init: IST,
         input: I,
+        nodelay: bool,
+        max_connections: usize,
     ) -> Arc<Actor<TCPServer<I, R, T, B, C, IST>>> {
         Arc::new(Actor::new(TCPServer {
             listener: Some(listener),
             connect_event,
             stream_init: Arc::new(stream_init),
             input_event: Arc::new(input),
+            nodelay,
+            max_connections,
             _phantom1: PhantomData,
             _phantom2: PhantomData,
             _phantom3: PhantomData,
@@ -63,6 +70,8 @@ where
         stream_init: IST,
         input: I,
         connect_event: Option<ConnectEventType>,
+        nodelay: bool,
+        max_connections: usize,
     ) -> Result<Arc<Actor<TCPServer<I, R, T, B, C, IST>>>, Box<dyn Error>> {
         let listener = TcpListener::bind(addr).await?;
         Ok(Self::into_actor(
@@ -70,6 +79,8 @@ where
             connect_event,
             stream_init,
             input,
+            nodelay,
+            max_connections,
         ))
     }
 
@@ -78,6 +89,8 @@ where
         stream_init: IST,
         input: I,
         connect_event: Option<ConnectEventType>,
+        nodelay: bool,
+        max_connections: usize,
     ) -> Result<Arc<Actor<TCPServer<I, R, T, B, C, IST>>>, Box<dyn Error>> {
         listener.set_nonblocking(true)?;
         let listener = TcpListener::from_std(listener)?;
@@ -86,6 +99,8 @@ where
             connect_event,
             stream_init,
             input,
+            nodelay,
+            max_connections,
         ))
     }
 
@@ -97,18 +112,39 @@ where
             let connect_event = self.connect_event.take();
             let input_event = self.input_event.clone();
             let stream_init = self.stream_init.clone();
+            let nodelay = self.nodelay;
+            let semaphore = if self.max_connections > 0 {
+                Some(Arc::new(Semaphore::new(self.max_connections)))
+            } else {
+                None
+            };
             let join: JoinHandle<anyhow::Result<()>> = tokio::spawn(async move {
                 loop {
+                    let permit = match &semaphore {
+                        Some(s) => Some(
+                            s.clone()
+                                .acquire_owned()
+                                .await
+                                .expect("semaphore closed unexpectedly"),
+                        ),
+                        None => None,
+                    };
                     let (socket, addr) = listener.accept().await?;
-                    if  connect_event.is_some() && !connect_event.unwrap()(addr) {
-                        warn!("addr:{} not connect", addr);
-                        continue;
+                    if nodelay {
+                        socket.set_nodelay(true)?;
+                    }
+                    if let Some(ref connect_event) = connect_event {
+                        if !connect_event(addr) {
+                            warn!("addr:{} not connect", addr);
+                            continue;
+                        }
                     }
                     trace!("start read:{}", addr);
                     let input = input_event.clone();
                     let peer_token = token.clone();
                     let stream_init = stream_init.clone();
                     tokio::spawn(async move {
+                        let _permit = permit;
                         match (*stream_init)(socket).await {
                             Ok(socket) => {
                                 let (reader, sender) = tokio::io::split(socket);

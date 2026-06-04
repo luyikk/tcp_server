@@ -6,6 +6,8 @@ use tokio::io::AsyncReadExt;
 #[tokio::main]
 async fn main() -> Result<()> {
     let tcpserver: Arc<dyn ITCPServer<()>> = Builder::new("0.0.0.0:5555")
+        .set_nodelay(true)
+        .set_max_connections(100)
         .set_connect_event(|addr| {
             println!("{:?} connect", addr);
             true
