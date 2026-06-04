@@ -26,6 +26,15 @@ where
             sender: Some(sender),
         }))
     }
+
+    /// Returns `Ok(&mut sender)` or `Err(ConnectionReset)` if disconnected.
+    #[inline]
+    fn sender_mut(&mut self) -> Result<&mut WriteHalf<T>> {
+        self.sender
+            .as_mut()
+            .ok_or_else(|| std::io::Error::from(ErrorKind::ConnectionReset).into())
+    }
+
     /// Check whether the peer has been disconnected.
     ///
     /// 是否断线
@@ -38,26 +47,19 @@ where
     ///
     /// 发送
     #[inline]
-    pub async fn send<'a>(&'a mut self, buff: &'a [u8]) -> Result<usize> {
-        if let Some(ref mut sender) = self.sender {
-            Ok(sender.write(buff).await?)
-        } else {
-            Err(std::io::Error::from(ErrorKind::ConnectionReset).into())
-        }
+    pub async fn send(&mut self, buff: &[u8]) -> Result<usize> {
+        Ok(self.sender_mut()?.write(buff).await?)
     }
 
     /// Send all data to the peer, then flush.
     ///
     /// 发送全部
     #[inline]
-    pub async fn send_all<'a>(&'a mut self, buff: &'a [u8]) -> Result<()> {
-        if let Some(ref mut sender) = self.sender {
-            sender.write_all(buff).await?;
-            sender.flush().await?;
-            Ok(())
-        } else {
-            Err(std::io::Error::from(ErrorKind::ConnectionReset).into())
-        }
+    pub async fn send_all(&mut self, buff: &[u8]) -> Result<()> {
+        let sender = self.sender_mut()?;
+        sender.write_all(buff).await?;
+        sender.flush().await?;
+        Ok(())
     }
 
     /// Flush the write buffer.
@@ -65,12 +67,8 @@ where
     /// flush
     #[inline]
     pub async fn flush(&mut self) -> Result<()> {
-        if let Some(ref mut sender) = self.sender {
-            sender.flush().await?;
-            Ok(())
-        } else {
-            Err(std::io::Error::from(ErrorKind::ConnectionReset).into())
-        }
+        self.sender_mut()?.flush().await?;
+        Ok(())
     }
 
     /// Disconnect the peer by shutting down the write half.
@@ -79,10 +77,9 @@ where
     #[inline]
     pub async fn disconnect(&mut self) -> Result<()> {
         if let Some(mut sender) = self.sender.take() {
-            Ok(sender.shutdown().await?)
-        } else {
-            Ok(())
+            sender.shutdown().await?;
         }
+        Ok(())
     }
 }
 

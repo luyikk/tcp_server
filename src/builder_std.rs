@@ -70,20 +70,17 @@ where
     ///
     /// 生成TCPSERVER,如果没有设置 tcp input 将报错
     pub async fn build(mut self) -> Arc<Actor<TCPServer<I, R, T, B, C, IST>>> {
-        if let Some(input) = self.input.take() {
-            if let Some(stream_init) = self.stream_init.take() {
-                return if let Some(connect) = self.connect_event.take() {
-                    TCPServer::from_std(self.listener, stream_init, input, Some(connect))
-                        .await
-                        .unwrap()
-                } else {
-                    TCPServer::from_std(self.listener, stream_init, input, None)
-                        .await
-                        .unwrap()
-                };
-            }
-            panic!("stream_init is no settings,please use set_stream_init function.");
-        }
-        panic!("input event is no settings,please use set_input_event function set input event.");
+        let input = self.input.take().unwrap_or_else(|| {
+            panic!(
+                "input event is no settings,please use set_input_event function set input event."
+            )
+        });
+        let stream_init = self.stream_init.take().unwrap_or_else(|| {
+            panic!("stream_init is no settings,please use set_stream_init function.")
+        });
+        let connect = self.connect_event.take();
+        TCPServer::from_std(self.listener, stream_init, input, connect)
+            .await
+            .unwrap()
     }
 }

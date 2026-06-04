@@ -37,6 +37,24 @@ where
     C: AsyncRead + AsyncWrite + Send + 'static,
     IST: Fn(TcpStream) -> B + Send + Sync + 'static,
 {
+    fn into_actor(
+        listener: TcpListener,
+        connect_event: Option<ConnectEventType>,
+        stream_init: IST,
+        input: I,
+    ) -> Arc<Actor<TCPServer<I, R, T, B, C, IST>>> {
+        Arc::new(Actor::new(TCPServer {
+            listener: Some(listener),
+            connect_event,
+            stream_init: Arc::new(stream_init),
+            input_event: Arc::new(input),
+            _phantom1: PhantomData,
+            _phantom2: PhantomData,
+            _phantom3: PhantomData,
+            _phantom4: PhantomData,
+        }))
+    }
+
     /// Create a new TCP server.
     ///
     /// 创建一个新的TCP服务
@@ -47,16 +65,12 @@ where
         connect_event: Option<ConnectEventType>,
     ) -> Result<Arc<Actor<TCPServer<I, R, T, B, C, IST>>>, Box<dyn Error>> {
         let listener = TcpListener::bind(addr).await?;
-        Ok(Arc::new(Actor::new(TCPServer {
-            listener: Some(listener),
+        Ok(Self::into_actor(
+            listener,
             connect_event,
-            stream_init: Arc::new(stream_init),
-            input_event: Arc::new(input),
-            _phantom1: Default::default(),
-            _phantom2: Default::default(),
-            _phantom3: Default::default(),
-            _phantom4: Default::default(),
-        })))
+            stream_init,
+            input,
+        ))
     }
 
     pub(crate) async fn from_std(
@@ -67,17 +81,12 @@ where
     ) -> Result<Arc<Actor<TCPServer<I, R, T, B, C, IST>>>, Box<dyn Error>> {
         listener.set_nonblocking(true)?;
         let listener = TcpListener::from_std(listener)?;
-
-        Ok(Arc::new(Actor::new(TCPServer {
-            listener: Some(listener),
+        Ok(Self::into_actor(
+            listener,
             connect_event,
-            stream_init: Arc::new(stream_init),
-            input_event: Arc::new(input),
-            _phantom1: Default::default(),
-            _phantom2: Default::default(),
-            _phantom3: Default::default(),
-            _phantom4: Default::default(),
-        })))
+            stream_init,
+            input,
+        ))
     }
 
     /// Start the TCP server — spawns an accept loop and returns a JoinHandle.
