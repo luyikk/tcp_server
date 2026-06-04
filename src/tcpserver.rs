@@ -100,11 +100,9 @@ where
             let join: JoinHandle<anyhow::Result<()>> = tokio::spawn(async move {
                 loop {
                     let (socket, addr) = listener.accept().await?;
-                    if let Some(ref connect_event) = connect_event {
-                        if !connect_event(addr) {
-                            warn!("addr:{} not connect", addr);
-                            continue;
-                        }
+                    if  connect_event.is_some() && !connect_event.unwrap()(addr) {
+                        warn!("addr:{} not connect", addr);
+                        continue;
                     }
                     trace!("start read:{}", addr);
                     let input = input_event.clone();
