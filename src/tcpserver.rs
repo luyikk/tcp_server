@@ -15,6 +15,9 @@ use tokio::task::JoinHandle;
 
 pub type ConnectEventType = fn(SocketAddr) -> bool;
 
+/// Type alias for an `Arc<Actor<TCPServer<...>>>`.
+pub type TCPServerHandle<I, R, T, B, C, IST> = Arc<Actor<TCPServer<I, R, T, B, C, IST>>>;
+
 pub struct TCPServer<I, R, T, B, C, IST> {
     listener: Option<TcpListener>,
     connect_event: Option<ConnectEventType>,
@@ -22,10 +25,7 @@ pub struct TCPServer<I, R, T, B, C, IST> {
     input_event: Arc<I>,
     nodelay: bool,
     max_connections: usize,
-    _phantom1: PhantomData<R>,
-    _phantom2: PhantomData<T>,
-    _phantom3: PhantomData<C>,
-    _phantom4: PhantomData<B>,
+    _phantom: PhantomData<(R, T, C, B)>,
 }
 
 unsafe impl<I, R, T, B, C, IST> Send for TCPServer<I, R, T, B, C, IST> {}
@@ -40,14 +40,14 @@ where
     C: AsyncRead + AsyncWrite + Send + 'static,
     IST: Fn(TcpStream) -> B + Send + Sync + 'static,
 {
-    fn into_actor(
+    fn create_actor(
         listener: TcpListener,
         connect_event: Option<ConnectEventType>,
         stream_init: IST,
         input: I,
         nodelay: bool,
         max_connections: usize,
-    ) -> Arc<Actor<TCPServer<I, R, T, B, C, IST>>> {
+    ) -> TCPServerHandle<I, R, T, B, C, IST> {
         Arc::new(Actor::new(TCPServer {
             listener: Some(listener),
             connect_event,
@@ -55,10 +55,7 @@ where
             input_event: Arc::new(input),
             nodelay,
             max_connections,
-            _phantom1: PhantomData,
-            _phantom2: PhantomData,
-            _phantom3: PhantomData,
-            _phantom4: PhantomData,
+            _phantom: Default::default(),
         }))
     }
 
@@ -72,9 +69,9 @@ where
         connect_event: Option<ConnectEventType>,
         nodelay: bool,
         max_connections: usize,
-    ) -> Result<Arc<Actor<TCPServer<I, R, T, B, C, IST>>>, Box<dyn Error>> {
+    ) -> Result<TCPServerHandle<I, R, T, B, C, IST>, Box<dyn Error>> {
         let listener = TcpListener::bind(addr).await?;
-        Ok(Self::into_actor(
+        Ok(Self::create_actor(
             listener,
             connect_event,
             stream_init,
@@ -84,6 +81,7 @@ where
         ))
     }
 
+    /// Create a TCP server from an existing `std::net::TcpListener`.
     pub(crate) async fn from_std(
         listener: std::net::TcpListener,
         stream_init: IST,
@@ -91,10 +89,10 @@ where
         connect_event: Option<ConnectEventType>,
         nodelay: bool,
         max_connections: usize,
-    ) -> Result<Arc<Actor<TCPServer<I, R, T, B, C, IST>>>, Box<dyn Error>> {
+    ) -> Result<TCPServerHandle<I, R, T, B, C, IST>, Box<dyn Error>> {
         listener.set_nonblocking(true)?;
         let listener = TcpListener::from_std(listener)?;
-        Ok(Self::into_actor(
+        Ok(Self::create_actor(
             listener,
             connect_event,
             stream_init,

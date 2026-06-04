@@ -1,4 +1,4 @@
-use crate::{ConnectEventType, TCPPeer, TCPServer};
+use crate::{ConnectEventType, TCPPeer, TCPServer, TCPServerHandle};
 
 use aqueue::Actor;
 use std::future::Future;
@@ -15,10 +15,7 @@ pub struct FromStdBuilder<I, R, T, B, C, IST> {
     listener: std::net::TcpListener,
     nodelay: bool,
     max_connections: usize,
-    _phantom1: PhantomData<R>,
-    _phantom2: PhantomData<T>,
-    _phantom3: PhantomData<C>,
-    _phantom4: PhantomData<B>,
+    _phantom: PhantomData<(R, T, C, B)>,
 }
 
 impl<I, R, T, B, C, IST> FromStdBuilder<I, R, T, B, C, IST>
@@ -38,10 +35,7 @@ where
             listener,
             nodelay: false,
             max_connections: 0,
-            _phantom1: Default::default(),
-            _phantom2: Default::default(),
-            _phantom3: Default::default(),
-            _phantom4: Default::default(),
+            _phantom: Default::default(),
         }
     }
 
@@ -89,7 +83,7 @@ where
     /// Build the TCPServer from a std listener. Panics if `set_input_event` or `set_stream_init` was not called.
     ///
     /// 生成TCPSERVER,如果没有设置 tcp input 将报错
-    pub async fn build(mut self) -> Arc<Actor<TCPServer<I, R, T, B, C, IST>>> {
+    pub async fn build(mut self) -> TCPServerHandle<I, R, T, B, C, IST> {
         let input = self.input.take().unwrap_or_else(|| {
             panic!(
                 "input event is no settings,please use set_input_event function set input event."
